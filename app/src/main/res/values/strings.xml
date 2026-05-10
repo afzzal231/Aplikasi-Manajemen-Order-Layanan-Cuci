@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Aplikasi Manajemen Order Layanan Cuci</string>
+    <string name="app_name">Aplikasi LaundryAja</string>
     <string name="label_berat">Berat Pakaian (kg)</string>
     <string name="pilih_paket">Pilih Paket Layanan:</string>
     <string name="btn_hitung">Hitung Total</string>

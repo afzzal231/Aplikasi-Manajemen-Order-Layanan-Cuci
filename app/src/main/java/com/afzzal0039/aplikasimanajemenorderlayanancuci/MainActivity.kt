@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.navigation.NavGraph
 import androidx.navigation.compose.rememberNavController
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.Navigation.NavGraph
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.theme.AplikasiManajemenOrderLayananCuciTheme
 
 class MainActivity : ComponentActivity() {
