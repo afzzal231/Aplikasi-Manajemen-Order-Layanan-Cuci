@@ -1,24 +1,21 @@
 package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -26,10 +23,10 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(
+fun EditScreen(
+    orderId: Int,
     navController: NavHostController,
-    viewModel: LaundryViewModel,
-    onAboutClick: () -> Unit
+    viewModel: LaundryViewModel
 ) {
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
     var berat by rememberSaveable { mutableStateOf("") }
@@ -38,7 +35,17 @@ fun MainScreen(
     var hasSprei by rememberSaveable { mutableStateOf(false) }
 
     var isError by remember { mutableStateOf(false) }
-    var showDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(orderId) {
+        val order = viewModel.getOrderById(orderId)
+        order?.let {
+            namaPelanggan = it.namaPelanggan
+            berat = it.berat.toString()
+            paket = it.paketLayanan
+            hasJaket = it.isJaket
+            hasSprei = it.isSprei
+        }
+    }
 
     val hargaPerKg = if (paket == "Reguler") 5000 else 8000
     val totalHarga = remember(berat, paket, hasJaket, hasSprei) {
@@ -62,22 +69,16 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("LaundryAja") },
+                title = { Text("Edit Pesanan") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.primary
-                ),
-                actions = {
-                    IconButton(onClick = { navController.navigate("history_screen") }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.outline_history_24),
-                            contentDescription = "Riwayat"
-                        )
-                    }
-                    IconButton(onClick = onAboutClick) {
-                        Icon(Icons.Default.Info, contentDescription = "About")
-                    }
-                }
+                )
             )
         }
     ) { padding ->
@@ -86,16 +87,11 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp)
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.laundry),
-                contentDescription = null,
-                modifier = Modifier.size(200.dp)
-            )
-
+            Text("Ubah Data Pesanan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedTextField(
                 value = namaPelanggan,
                 onValueChange = { namaPelanggan = it },
@@ -105,6 +101,7 @@ fun MainScreen(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
             OutlinedTextField(
                 value = berat,
                 onValueChange = { berat = it; isError = false },
@@ -113,26 +110,23 @@ fun MainScreen(
                 isError = isError,
                 modifier = Modifier.fillMaxWidth()
             )
-            if (isError) {
-                Text("Input berat tidak valid!", color = MaterialTheme.colorScheme.error)
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Layanan Tambahan:", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("Layanan Tambahan:", fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = hasJaket, onCheckedChange = { hasJaket = it })
                 Text("Jaket (+Rp 10.000)")
             }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = hasSprei, onCheckedChange = { hasSprei = it })
                 Text("Sprei (+Rp 15.000)")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Pilih Paket:", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text("Pilih Paket:", fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = (paket == "Reguler"), onClick = { paket = "Reguler" })
                 Text("Reguler")
                 Spacer(modifier = Modifier.width(16.dp))
@@ -147,48 +141,34 @@ fun MainScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Total Estimasi Biaya:", style = MaterialTheme.typography.bodyMedium)
-                    Text(totalFormatted, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text("Total Biaya Baru:", style = MaterialTheme.typography.bodyMedium)
+                    Text(totalFormatted, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
 
             Button(
                 onClick = {
-                    if (berat.isEmpty() || namaPelanggan.isEmpty() || berat.toDoubleOrNull() == null) {
+                    if (berat.isEmpty() || namaPelanggan.isEmpty() || berat.toFloatOrNull() == null) {
                         isError = true
                     } else {
-                        showDialog = true
-                    }
-                },
-                modifier = Modifier.padding(top = 24.dp).fillMaxWidth()
-            ) {
-                Text("Simpan Pesanan")
-            }
-
-            if (showDialog) {
-                AlertDialog(
-                    onDismissRequest = { showDialog = false },
-                    title = { Text("Konfirmasi Simpan") },
-                    text = { Text("Simpan pesanan atas nama $namaPelanggan dengan total $totalFormatted?") },
-                    confirmButton = {
-                        Button(onClick = {
-                            viewModel.insertOrder(
-                                nama = namaPelanggan,
-                                berat = berat,
+                        viewModel.updateOrder(
+                            Order(
+                                id = orderId,
+                                namaPelanggan = namaPelanggan,
+                                berat = berat.toFloat(),
                                 isJaket = hasJaket,
                                 isSprei = hasSprei,
-                                paket = paket,
-                                total = totalHarga,
-                                estimasi = hitungEstimasi(paket)
+                                paketLayanan = paket,
+                                totalHarga = totalHarga,
+                                estimasiSelesai = hitungEstimasi(paket)
                             )
-                            showDialog = false
-                            navController.navigate("history_screen")
-                        }) { Text("Ya, Simpan") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showDialog = false }) { Text("Batal") }
+                        )
+                        navController.popBackStack()
                     }
-                )
+                },
+                modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
+            ) {
+                Text("Simpan Perubahan")
             }
         }
     }

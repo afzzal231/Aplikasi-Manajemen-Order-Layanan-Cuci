@@ -1,4 +1,4 @@
-package com.afzzal0039.aplikasimanajemenorderlayanancuci.Navigation
+package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons

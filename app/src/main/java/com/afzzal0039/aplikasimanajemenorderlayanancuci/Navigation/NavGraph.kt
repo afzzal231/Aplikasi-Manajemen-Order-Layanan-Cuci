@@ -6,48 +6,49 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.EditScreen
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.HistoryScreen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.MainScreen
-import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.ResultScreen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.Screen
-
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.AboutScreen
 
 @Composable
-fun NavGraph(navController: NavHostController) {
+fun NavGraph(
+    navController: NavHostController,
+    viewModel: LaundryViewModel
+) {
     NavHost(
         navController = navController,
         startDestination = Screen.Main.route
     ) {
+
         composable(Screen.Main.route) {
             MainScreen(
-                onCalculate = { berat, paket, hasJaket, hasSprei ->
-                    navController.navigate(
-                        Screen.Result.createRoute(berat, paket, hasJaket, hasSprei)
-                    )
-                },
+                navController = navController,
+                viewModel = viewModel,
                 onAboutClick = { navController.navigate(Screen.About.route) }
             )
         }
 
+        composable(Screen.History.route) {
+            HistoryScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+
         composable(
-            route = Screen.Result.route,
+            route = Screen.Edit.route,
             arguments = listOf(
-                navArgument("berat") { type = NavType.StringType },
-                navArgument("paket") { type = NavType.StringType },
-                navArgument("hasJaket") { type = NavType.BoolType },
-                navArgument("hasSprei") { type = NavType.BoolType }
+                navArgument("orderId") { type = NavType.IntType }
             )
         ) { backStackEntry ->
-            val berat = backStackEntry.arguments?.getString("berat") ?: "0"
-            val paket = backStackEntry.arguments?.getString("paket") ?: "Reguler"
-            val hasJaket = backStackEntry.arguments?.getBoolean("hasJaket") ?: false
-            val hasSprei = backStackEntry.arguments?.getBoolean("hasSprei") ?: false
-
-            ResultScreen(
-                berat = berat,
-                paket = paket,
-                hasJaket = hasJaket,
-                hasSprei = hasSprei,
-                onBack = { navController.popBackStack() }
+            val orderId = backStackEntry.arguments?.getInt("orderId") ?: -1
+            EditScreen(
+                orderId = orderId,
+                navController = navController,
+                viewModel = viewModel
             )
         }
 

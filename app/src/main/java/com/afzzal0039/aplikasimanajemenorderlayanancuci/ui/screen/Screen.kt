@@ -1,12 +1,13 @@
 package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
 sealed class Screen(val route: String) {
-    object Main : Screen("Main")
-    object About : Screen("About")
+    object Main : Screen("main_screen")
 
-    object Result : Screen("Result/{berat}/{paket}/{hasJaket}/{hasSprei}") {
-        fun createRoute(berat: String, paket: String, hasJaket: Boolean, hasSprei: Boolean): String {
-            return "Result/$berat/$paket/$hasJaket/$hasSprei"
-        }
+    object History : Screen("history_screen")
+
+    object About : Screen("about_screen")
+
+    object Edit : Screen("edit_screen/{orderId}") {
+        fun createRoute(orderId: Int) = "edit_screen/$orderId"
     }
 }
