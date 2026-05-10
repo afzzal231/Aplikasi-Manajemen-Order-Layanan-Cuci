@@ -27,9 +27,22 @@ class LaundryViewModel(
             initialValue = false
         )
 
+    val isDarkMode: StateFlow<Boolean> = dataStore.isDarkMode
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
     fun toggleLayout(isGrid: Boolean) {
         viewModelScope.launch {
             dataStore.saveLayoutSetting(isGrid)
+        }
+    }
+
+    fun toggleTheme(isDark: Boolean) {
+        viewModelScope.launch {
+            dataStore.saveDarkMode(isDark)
         }
     }
 

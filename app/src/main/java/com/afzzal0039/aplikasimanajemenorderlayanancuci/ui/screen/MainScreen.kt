@@ -13,7 +13,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -40,6 +39,8 @@ fun MainScreen(
     var isError by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
 
+    val isDarkMode by viewModel.isDarkMode.collectAsState()
+
     val hargaPerKg = if (paket == "Reguler") 5000 else 8000
     val totalHarga = remember(berat, paket, hasJaket, hasSprei) {
         val beratDouble = berat.toDoubleOrNull() ?: 0.0
@@ -49,7 +50,7 @@ fun MainScreen(
         total
     }
 
-    val rupiahFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+    @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     val totalFormatted = rupiahFormat.format(totalHarga).replace("Rp", "Rp ")
 
     fun hitungEstimasi(paketDipilih: String): String {
@@ -63,21 +64,38 @@ fun MainScreen(
         topBar = {
             TopAppBar(
                 title = { Text("LaundryAja") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary
-                ),
                 actions = {
+                    IconButton(onClick = { viewModel.toggleTheme(!isDarkMode) }) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (isDarkMode) R.drawable.baseline_light_mode_24
+                                else R.drawable.baseline_dark_mode_24
+                            ),
+                            contentDescription = "Ganti Tema",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+
                     IconButton(onClick = { navController.navigate("history_screen") }) {
                         Icon(
                             painter = painterResource(id = R.drawable.outline_history_24),
-                            contentDescription = "Riwayat"
+                            contentDescription = "Riwayat",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                     IconButton(onClick = onAboutClick) {
-                        Icon(Icons.Default.Info, contentDescription = "About")
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "About",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
             )
         }
     ) { padding ->
@@ -96,6 +114,7 @@ fun MainScreen(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedTextField(
                 value = namaPelanggan,
                 onValueChange = { namaPelanggan = it },
@@ -105,6 +124,7 @@ fun MainScreen(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
             OutlinedTextField(
                 value = berat,
                 onValueChange = { berat = it; isError = false },
@@ -114,7 +134,7 @@ fun MainScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             if (isError) {
-                Text("Input berat tidak valid!", color = MaterialTheme.colorScheme.error)
+                Text("Input berat tidak valid!", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
