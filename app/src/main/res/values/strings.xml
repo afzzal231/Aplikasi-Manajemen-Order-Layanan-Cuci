@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Aplikasi Manajemen Order Layanan Cuci</string>
+    <string name="label_berat">Berat Pakaian (kg)</string>
+    <string name="pilih_paket">Pilih Paket Layanan:</string>
+    <string name="btn_hitung">Hitung Total</string>
+    <string name="btn_bagikan">Bagikan Hasil</string>
+    <string name="hasil_hitung">Hasil Perhitungan</string>
+    <string name="error_input">Masukkan berat yang benar!</string>
+    <string name="about_title">Tentang Aplikasi</string>
 </resources>
