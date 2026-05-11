@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,10 +38,10 @@ fun MainScreen(
     var hasSprei by rememberSaveable { mutableStateOf(false) }
     var isError by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
+    var mDisplayMenu by remember { mutableStateOf(false) }
 
     val categories by viewModel.allCategories.collectAsState()
     val isDarkMode by viewModel.isDarkMode.collectAsState()
-    var mDisplayMenu by remember { mutableStateOf(false) }
 
     val totalHarga = remember(berat, paket, hasJaket, hasSprei, categories) {
         val beratDouble = berat.toDoubleOrNull() ?: 0.0
@@ -52,8 +53,7 @@ fun MainScreen(
         total
     }
 
-    @Suppress("DEPRECATION")
-    val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
+    @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     val totalFormatted = rupiahFormat.format(totalHarga).replace("Rp", "Rp ")
 
     fun hitungEstimasi(paketDipilih: String): String {
@@ -74,8 +74,7 @@ fun MainScreen(
                                 id = if (isDarkMode) R.drawable.baseline_light_mode_24
                                 else R.drawable.baseline_dark_mode_24
                             ),
-                            contentDescription = "Ganti Tema",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            contentDescription = "Ganti Tema"
                         )
                     }
 
@@ -83,8 +82,7 @@ fun MainScreen(
                         IconButton(onClick = { mDisplayMenu = true }) {
                             Icon(
                                 painter = painterResource(id = R.drawable.baseline_menu_24),
-                                contentDescription = "Buka Menu",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                contentDescription = "Buka Menu"
                             )
                         }
 
@@ -96,15 +94,24 @@ fun MainScreen(
                                 text = { Text("Riwayat Pesanan") },
                                 onClick = {
                                     mDisplayMenu = false
-                                    navController.navigate("history_screen")
+                                    navController.navigate(Screen.History.route)
                                 },
                                 leadingIcon = {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.outline_history_24),
-                                        contentDescription = null
-                                    )
+                                    Icon(painterResource(id = R.drawable.outline_history_24), null)
                                 }
                             )
+
+                            DropdownMenuItem(
+                                text = { Text("Recycle Bin") },
+                                onClick = {
+                                    mDisplayMenu = false
+                                    navController.navigate(Screen.RecycleBin.route)
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            )
+
                             DropdownMenuItem(
                                 text = { Text("Tentang Aplikasi") },
                                 onClick = {
@@ -112,10 +119,7 @@ fun MainScreen(
                                     onAboutClick()
                                 },
                                 leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Info,
-                                        contentDescription = null
-                                    )
+                                    Icon(Icons.Default.Info, null)
                                 }
                             )
                         }
@@ -141,6 +145,7 @@ fun MainScreen(
                 contentDescription = null,
                 modifier = Modifier.size(200.dp)
             )
+
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
@@ -150,6 +155,7 @@ fun MainScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
@@ -161,8 +167,9 @@ fun MainScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             if (isError) {
-                Text("Input berat tidak valid!", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text("Input tidak valid!", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Text("Layanan Tambahan:", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
@@ -174,7 +181,9 @@ fun MainScreen(
                 Checkbox(checked = hasSprei, onCheckedChange = { hasSprei = it })
                 Text("Sprei (+Rp 15.000)")
             }
+
             Spacer(modifier = Modifier.height(16.dp))
+
             Text("Pilih Paket:", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 categories.forEach { category ->
@@ -218,7 +227,7 @@ fun MainScreen(
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
                     title = { Text("Konfirmasi Simpan") },
-                    text = { Text("Simpan pesanan atas nama $namaPelanggan dengan total $totalFormatted?") },
+                    text = { Text("Simpan pesanan atas nama $namaPelanggan?") },
                     confirmButton = {
                         Button(onClick = {
                             viewModel.insertOrder(
@@ -231,7 +240,7 @@ fun MainScreen(
                                 estimasi = hitungEstimasi(paket)
                             )
                             showDialog = false
-                            navController.navigate("history_screen")
+                            navController.navigate(Screen.History.route)
                         }) { Text("Ya, Simpan") }
                     },
                     dismissButton = {
