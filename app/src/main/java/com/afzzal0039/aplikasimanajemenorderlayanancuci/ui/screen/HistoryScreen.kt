@@ -121,7 +121,6 @@ fun HistoryScreen(
                             order = order,
                             isGrid = true,
                             onDelete = { orderToDelete = order },
-                            // Sesuaikan rute edit dengan NavGraph kamu
                             onEdit = { navController.navigate("edit_screen/${order.id}") }
                         )
                     }
@@ -153,7 +152,7 @@ fun HistoryScreen(
                     Button(
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                         onClick = {
-                            val backupOrder = orderToDelete!! // Backup data sebelum dihapus
+                            val backupOrder = orderToDelete!!
                             viewModel.deleteOrder(backupOrder)
                             orderToDelete = null
 

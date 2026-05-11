@@ -28,12 +28,13 @@ fun EditScreen(
     navController: NavHostController,
     viewModel: LaundryViewModel
 ) {
+    val categories by viewModel.allCategories.collectAsState()
+
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
     var berat by rememberSaveable { mutableStateOf("") }
     var paket by rememberSaveable { mutableStateOf("Reguler") }
     var hasJaket by rememberSaveable { mutableStateOf(false) }
     var hasSprei by rememberSaveable { mutableStateOf(false) }
-
     var isError by remember { mutableStateOf(false) }
 
     LaunchedEffect(orderId) {
@@ -47,16 +48,17 @@ fun EditScreen(
         }
     }
 
-    val hargaPerKg = if (paket == "Reguler") 5000 else 8000
-    val totalHarga = remember(berat, paket, hasJaket, hasSprei) {
+    val totalHarga = remember(berat, paket, hasJaket, hasSprei, categories) {
         val beratDouble = berat.toDoubleOrNull() ?: 0.0
-        var total = (beratDouble * hargaPerKg).toInt()
+        val hargaKategori = categories.find { it.name == paket }?.price ?: 5000
+
+        var total = (beratDouble * hargaKategori).toInt()
         if (hasJaket) total += 10000
         if (hasSprei) total += 15000
         total
     }
 
-    val rupiahFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+    @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     val totalFormatted = rupiahFormat.format(totalHarga).replace("Rp", "Rp ")
 
     fun hitungEstimasi(paketDipilih: String): String {
@@ -77,7 +79,7 @@ fun EditScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -122,16 +124,20 @@ fun EditScreen(
                 Checkbox(checked = hasSprei, onCheckedChange = { hasSprei = it })
                 Text("Sprei (+Rp 15.000)")
             }
-
             Spacer(modifier = Modifier.height(16.dp))
 
             Text("Pilih Paket:", fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = (paket == "Reguler"), onClick = { paket = "Reguler" })
-                Text("Reguler")
-                Spacer(modifier = Modifier.width(16.dp))
-                RadioButton(selected = (paket == "Ekspres"), onClick = { paket = "Ekspres" })
-                Text("Ekspres")
+                categories.forEach { category ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = (paket == category.name),
+                            onClick = { paket = category.name }
+                        )
+                        Text(category.name)
+                        Spacer(modifier = Modifier.width(16.dp))
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
