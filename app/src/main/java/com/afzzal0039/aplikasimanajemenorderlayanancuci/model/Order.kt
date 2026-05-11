@@ -14,5 +14,6 @@ data class Order(
     val paketLayanan: String,
     val totalHarga: Int,
     val estimasiSelesai: String,
-    val tanggalInput: Long = System.currentTimeMillis()
+    val tanggalInput: Long = System.currentTimeMillis(),
+    val isDeleted: Boolean = false
 )
