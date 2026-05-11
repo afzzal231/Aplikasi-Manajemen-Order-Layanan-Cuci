@@ -5,9 +5,9 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Category
 
-
-@Database(entities = [Order::class], version = 1, exportSchema = false)
+@Database(entities = [Order::class, Category::class], version = 2, exportSchema = false)
 abstract class OrderDb : RoomDatabase() {
 
     abstract val dao: OrderDao
@@ -22,7 +22,9 @@ abstract class OrderDb : RoomDatabase() {
                     context.applicationContext,
                     OrderDb::class.java,
                     "order_db"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .build()
                 INSTANCE = instance
                 instance
             }

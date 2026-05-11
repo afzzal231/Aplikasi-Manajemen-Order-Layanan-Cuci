@@ -24,12 +24,14 @@ import androidx.navigation.NavHostController
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
+
 fun shareOrder(context: Context, order: Order, hargaFormatted: String) {
     val shareText = """
-        🧺 *Detail Pesanan Laundry Aja* 🧺
+          *Detail Pesanan Laundry Aja*
         ----------------------------------
         Nama Pelanggan : ${order.namaPelanggan}
         Paket Layanan  : ${order.paketLayanan}
@@ -59,13 +61,17 @@ fun HistoryScreen(
     var orderToDelete by remember { mutableStateOf<Order?>(null) }
     val isGridView by viewModel.isGridView.collectAsState()
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         "Riwayat Pesanan",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer // Warna teks kontras
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 },
                 navigationIcon = {
@@ -73,7 +79,7 @@ fun HistoryScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer // Warna ikon kontras
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 },
@@ -89,7 +95,7 @@ fun HistoryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer, // WARNA BIRU MUDA (Sesuai Gambar)
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -115,7 +121,8 @@ fun HistoryScreen(
                             order = order,
                             isGrid = true,
                             onDelete = { orderToDelete = order },
-                            onEdit = { navController.navigate(Screen.Edit.createRoute(order.id)) }
+                            // Sesuaikan rute edit dengan NavGraph kamu
+                            onEdit = { navController.navigate("edit_screen/${order.id}") }
                         )
                     }
                 }
@@ -130,7 +137,7 @@ fun HistoryScreen(
                             order = order,
                             isGrid = false,
                             onDelete = { orderToDelete = order },
-                            onEdit = { navController.navigate(Screen.Edit.createRoute(order.id)) }
+                            onEdit = { navController.navigate("edit_screen/${order.id}") }
                         )
                     }
                 }
@@ -146,10 +153,23 @@ fun HistoryScreen(
                     Button(
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
                         onClick = {
-                            orderToDelete?.let { viewModel.deleteOrder(it) }
+                            val backupOrder = orderToDelete!! // Backup data sebelum dihapus
+                            viewModel.deleteOrder(backupOrder)
                             orderToDelete = null
+
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Pesanan ${backupOrder.namaPelanggan} dihapus",
+                                    actionLabel = "BATALKAN",
+                                    duration = SnackbarDuration.Short
+                                )
+
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    viewModel.undoDelete(backupOrder)
+                                }
+                            }
                         }
-                    ) { Text("Hapus") }
+                    ) { Text("Hapus", color = Color.White) }
                 },
                 dismissButton = {
                     TextButton(onClick = { orderToDelete = null }) { Text("Batal") }

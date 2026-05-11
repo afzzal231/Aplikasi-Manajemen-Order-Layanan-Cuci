@@ -1,6 +1,7 @@
 package com.afzzal0039.aplikasimanajemenorderlayanancuci.database
 
 import androidx.room.*
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Category
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import kotlinx.coroutines.flow.Flow
 
@@ -20,4 +21,14 @@ interface OrderDao {
 
     @Query("SELECT * FROM laundry_order WHERE id = :id")
     suspend fun getOrderById(id: Int): Order?
+
+
+    @Query("SELECT * FROM categories")
+    fun getAllCategories(): Flow<List<Category>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategory(category: Category)
+
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun getCategoryCount(): Int
 }

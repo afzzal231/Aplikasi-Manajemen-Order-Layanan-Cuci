@@ -35,22 +35,25 @@ fun MainScreen(
     var paket by rememberSaveable { mutableStateOf("Reguler") }
     var hasJaket by rememberSaveable { mutableStateOf(false) }
     var hasSprei by rememberSaveable { mutableStateOf(false) }
-
     var isError by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
 
+    val categories by viewModel.allCategories.collectAsState()
     val isDarkMode by viewModel.isDarkMode.collectAsState()
+    var mDisplayMenu by remember { mutableStateOf(false) }
 
-    val hargaPerKg = if (paket == "Reguler") 5000 else 8000
-    val totalHarga = remember(berat, paket, hasJaket, hasSprei) {
+    val totalHarga = remember(berat, paket, hasJaket, hasSprei, categories) {
         val beratDouble = berat.toDoubleOrNull() ?: 0.0
-        var total = (beratDouble * hargaPerKg).toInt()
+        val hargaKategori = categories.find { it.name == paket }?.price ?: 5000
+
+        var total = (beratDouble * hargaKategori).toInt()
         if (hasJaket) total += 10000
         if (hasSprei) total += 15000
         total
     }
 
-    @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
+    @Suppress("DEPRECATION")
+    val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     val totalFormatted = rupiahFormat.format(totalHarga).replace("Rp", "Rp ")
 
     fun hitungEstimasi(paketDipilih: String): String {
@@ -76,25 +79,51 @@ fun MainScreen(
                         )
                     }
 
-                    IconButton(onClick = { navController.navigate("history_screen") }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.outline_history_24),
-                            contentDescription = "Riwayat",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    IconButton(onClick = onAboutClick) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = "About",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                    Box {
+                        IconButton(onClick = { mDisplayMenu = true }) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.baseline_menu_24),
+                                contentDescription = "Buka Menu",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = mDisplayMenu,
+                            onDismissRequest = { mDisplayMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Riwayat Pesanan") },
+                                onClick = {
+                                    mDisplayMenu = false
+                                    navController.navigate("history_screen")
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.outline_history_24),
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Tentang Aplikasi") },
+                                onClick = {
+                                    mDisplayMenu = false
+                                    onAboutClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
@@ -112,7 +141,6 @@ fun MainScreen(
                 contentDescription = null,
                 modifier = Modifier.size(200.dp)
             )
-
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
@@ -122,7 +150,6 @@ fun MainScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
@@ -136,7 +163,6 @@ fun MainScreen(
             if (isError) {
                 Text("Input berat tidak valid!", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
-
             Spacer(modifier = Modifier.height(16.dp))
 
             Text("Layanan Tambahan:", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
@@ -148,16 +174,19 @@ fun MainScreen(
                 Checkbox(checked = hasSprei, onCheckedChange = { hasSprei = it })
                 Text("Sprei (+Rp 15.000)")
             }
-
             Spacer(modifier = Modifier.height(16.dp))
-
             Text("Pilih Paket:", fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Start))
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                RadioButton(selected = (paket == "Reguler"), onClick = { paket = "Reguler" })
-                Text("Reguler")
-                Spacer(modifier = Modifier.width(16.dp))
-                RadioButton(selected = (paket == "Ekspres"), onClick = { paket = "Ekspres" })
-                Text("Ekspres")
+                categories.forEach { category ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = (paket == category.name),
+                            onClick = { paket = category.name }
+                        )
+                        Text(category.name)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

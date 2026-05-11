@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.database.OrderDao
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Category // Import model baru
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.SettingsDataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -17,33 +18,37 @@ class LaundryViewModel(
     private val dataStore: SettingsDataStore
 ) : ViewModel() {
 
+    val allCategories: StateFlow<List<Category>> = dao.getAllCategories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        seedCategories()
+    }
+
+    private fun seedCategories() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (dao.getCategoryCount() == 0) {
+                dao.insertCategory(Category(name = "Reguler", price = 5000))
+                dao.insertCategory(Category(name = "Ekspres", price = 8000))
+            }
+        }
+    }
+
     val allOrders: StateFlow<List<Order>> = dao.getAllOrders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val isGridView: StateFlow<Boolean> = dataStore.isGridLayout
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val isDarkMode: StateFlow<Boolean> = dataStore.isDarkMode
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = false
-        )
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun toggleLayout(isGrid: Boolean) {
-        viewModelScope.launch {
-            dataStore.saveLayoutSetting(isGrid)
-        }
+        viewModelScope.launch { dataStore.saveLayoutSetting(isGrid) }
     }
 
     fun toggleTheme(isDark: Boolean) {
-        viewModelScope.launch {
-            dataStore.saveDarkMode(isDark)
-        }
+        viewModelScope.launch { dataStore.saveDarkMode(isDark) }
     }
 
     fun insertOrder(
@@ -56,7 +61,6 @@ class LaundryViewModel(
         estimasi: String
     ) {
         val beratFloat = berat.toFloatOrNull() ?: 0f
-
         if (nama.isNotBlank() && beratFloat > 0f) {
             viewModelScope.launch(Dispatchers.IO) {
                 val order = Order(
@@ -73,21 +77,21 @@ class LaundryViewModel(
         }
     }
 
-    fun updateOrder(order: Order) {
+    fun undoDelete(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.updateOrder(order)
+            dao.insertOrder(order) // Masukkan kembali data yang baru dihapus
         }
+    }
+
+    fun updateOrder(order: Order) {
+        viewModelScope.launch(Dispatchers.IO) { dao.updateOrder(order) }
     }
 
     suspend fun getOrderById(id: Int): Order? {
-        return withContext(Dispatchers.IO) {
-            dao.getOrderById(id)
-        }
+        return withContext(Dispatchers.IO) { dao.getOrderById(id) }
     }
 
     fun deleteOrder(order: Order) {
-        viewModelScope.launch(Dispatchers.IO) {
-            dao.deleteOrder(order)
-        }
+        viewModelScope.launch(Dispatchers.IO) { dao.deleteOrder(order) }
     }
 }
