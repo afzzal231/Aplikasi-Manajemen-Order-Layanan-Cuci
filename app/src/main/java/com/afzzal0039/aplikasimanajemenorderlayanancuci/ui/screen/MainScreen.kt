@@ -31,6 +31,7 @@ fun MainScreen(
     viewModel: LaundryViewModel,
     onAboutClick: () -> Unit
 ) {
+
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
     var berat by rememberSaveable { mutableStateOf("") }
     var paket by rememberSaveable { mutableStateOf("Reguler") }
@@ -239,6 +240,14 @@ fun MainScreen(
                                 total = totalHarga,
                                 estimasi = hitungEstimasi(paket)
                             )
+
+                            namaPelanggan = ""
+                            berat = ""
+                            paket = "Reguler"
+                            hasJaket = false
+                            hasSprei = false
+                            isError = false
+
                             showDialog = false
                             navController.navigate(Screen.History.route)
                         }) { Text("Ya, Simpan") }
