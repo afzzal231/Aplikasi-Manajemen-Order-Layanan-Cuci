@@ -65,22 +65,29 @@ fun HistoryScreen(
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) { data ->
+                Snackbar(
+                    action = {
+                        TextButton(onClick = { data.performAction() }) {
+                            Text(data.visuals.actionLabel ?: "", color = MaterialTheme.colorScheme.inversePrimary)
+                        }
+                    }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(painterResource(id = R.drawable.outline_delete_24), contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(data.visuals.message)
+                    }
+                }
+            }
+        },
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Riwayat Pesanan",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                },
+                title = { Text("Riwayat Pesanan") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kembali")
                     }
                 },
                 actions = {
@@ -89,23 +96,20 @@ fun HistoryScreen(
                             painter = painterResource(
                                 id = if (isGridView) R.drawable.baseline_view_list_24 else R.drawable.baseline_grid_view_24
                             ),
-                            contentDescription = "Switch View",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            contentDescription = "Switch View"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
         }
     ) { padding ->
         if (orders.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Belum ada data pesanan.")
+                Text("Belum ada data pesanan aktif.")
             }
         } else {
             if (isGridView) {
@@ -146,29 +150,30 @@ fun HistoryScreen(
         if (orderToDelete != null) {
             AlertDialog(
                 onDismissRequest = { orderToDelete = null },
-                title = { Text("Hapus Pesanan") },
-                text = { Text("Yakin ingin menghapus pesanan milik ${orderToDelete?.namaPelanggan}?") },
+                icon = { Icon(painterResource(id = R.drawable.outline_delete_24), contentDescription = null, tint = Color.Red) },
+                title = { Text("Pindahkan ke Recycle Bin?") },
+                text = { Text("Pesanan milik ${orderToDelete?.namaPelanggan} akan dipindahkan ke tempat sampah.") },
                 confirmButton = {
                     Button(
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         onClick = {
-                            val backupOrder = orderToDelete!!
-                            viewModel.deleteOrder(backupOrder)
+                            val currentOrder = orderToDelete!!
+                            viewModel.moveToTrash(currentOrder)
                             orderToDelete = null
 
                             scope.launch {
                                 val result = snackbarHostState.showSnackbar(
-                                    message = "Pesanan ${backupOrder.namaPelanggan} dihapus",
+                                    message = "Pindah ke Recycle Bin",
                                     actionLabel = "BATALKAN",
                                     duration = SnackbarDuration.Short
                                 )
 
                                 if (result == SnackbarResult.ActionPerformed) {
-                                    viewModel.undoDelete(backupOrder)
+                                    viewModel.restoreOrder(currentOrder)
                                 }
                             }
                         }
-                    ) { Text("Hapus", color = Color.White) }
+                    ) { Text("Hapus") }
                 },
                 dismissButton = {
                     TextButton(onClick = { orderToDelete = null }) { Text("Batal") }
@@ -186,8 +191,7 @@ fun OrderCard(
     onEdit: () -> Unit
 ) {
     val context = LocalContext.current
-    @Suppress("DEPRECATION") val localeID = Locale("in", "ID")
-    val rupiahFormat = NumberFormat.getCurrencyInstance(localeID)
+    @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     val hargaFormatted = rupiahFormat.format(order.totalHarga).replace("Rp", "Rp ")
 
     Card(
@@ -195,62 +199,27 @@ fun OrderCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            Text(order.namaPelanggan, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text("Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium)
+            Text("${order.berat} kg", style = MaterialTheme.typography.bodySmall)
             Text(
-                text = order.namaPelanggan,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1
-            )
-            Text(text = "Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "${order.berat} kg", style = MaterialTheme.typography.bodySmall)
-
-            Text(
-                text = "Estimasi: ${order.estimasiSelesai}",
+                "Estimasi: ${order.estimasiSelesai}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Medium
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = hargaFormatted,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyLarge
+                color = MaterialTheme.colorScheme.secondary
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+            Text(hargaFormatted, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = if (isGrid) Arrangement.SpaceBetween else Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 IconButton(onClick = { shareOrder(context, order, hargaFormatted) }) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = "Bagikan",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(Icons.Default.Share, "Bagikan", tint = MaterialTheme.colorScheme.primary)
                 }
-
-                if (!isGrid) {
-                    IconButton(onClick = onEdit) {
-                        Icon(painter = painterResource(id = R.drawable.outline_edit_24), contentDescription = "Edit", tint = Color.Blue)
-                    }
-                    IconButton(onClick = onDelete) {
-                        Icon(painter = painterResource(id = R.drawable.outline_delete_24), contentDescription = "Hapus", tint = Color.Red)
-                    }
-                } else {
-                    Row {
-                        TextButton(onClick = onEdit, contentPadding = PaddingValues(4.dp)) {
-                            Text("Edit", style = MaterialTheme.typography.labelSmall)
-                        }
-                        TextButton(onClick = onDelete, contentPadding = PaddingValues(4.dp)) {
-                            Text("Hapus", color = Color.Red, style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
+                IconButton(onClick = onEdit) {
+                    Icon(painterResource(id = R.drawable.outline_edit_24), "Edit", tint = Color.Blue)
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(painterResource(id = R.drawable.outline_delete_24), "Hapus", tint = Color.Red)
                 }
             }
         }
