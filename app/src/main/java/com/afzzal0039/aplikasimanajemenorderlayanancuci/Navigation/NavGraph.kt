@@ -12,6 +12,7 @@ import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.HistoryScreen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.MainScreen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.Screen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.AboutScreen
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.RecycleBinScreen
 
 @Composable
 fun NavGraph(
@@ -33,6 +34,13 @@ fun NavGraph(
 
         composable(Screen.History.route) {
             HistoryScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+
+        composable("recycle_bin_screen") {
+            RecycleBinScreen(
                 navController = navController,
                 viewModel = viewModel
             )

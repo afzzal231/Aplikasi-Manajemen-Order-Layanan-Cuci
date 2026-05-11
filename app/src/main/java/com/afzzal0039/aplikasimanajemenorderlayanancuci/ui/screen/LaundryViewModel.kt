@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.database.OrderDao
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
-import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Category // Import model baru
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Category
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.SettingsDataStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,7 +34,10 @@ class LaundryViewModel(
         }
     }
 
-    val allOrders: StateFlow<List<Order>> = dao.getAllOrders()
+    val allOrders: StateFlow<List<Order>> = dao.getAllActiveOrders()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val trashOrders: StateFlow<List<Order>> = dao.getTrashOrders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val isGridView: StateFlow<Boolean> = dataStore.isGridLayout
@@ -51,15 +54,7 @@ class LaundryViewModel(
         viewModelScope.launch { dataStore.saveDarkMode(isDark) }
     }
 
-    fun insertOrder(
-        nama: String,
-        berat: String,
-        isJaket: Boolean,
-        isSprei: Boolean,
-        paket: String,
-        total: Int,
-        estimasi: String
-    ) {
+    fun insertOrder(nama: String, berat: String, isJaket: Boolean, isSprei: Boolean, paket: String, total: Int, estimasi: String) {
         val beratFloat = berat.toFloatOrNull() ?: 0f
         if (nama.isNotBlank() && beratFloat > 0f) {
             viewModelScope.launch(Dispatchers.IO) {
@@ -70,16 +65,29 @@ class LaundryViewModel(
                     isSprei = isSprei,
                     paketLayanan = paket,
                     totalHarga = total,
-                    estimasiSelesai = estimasi
+                    estimasiSelesai = estimasi,
+                    isDeleted = false
                 )
                 dao.insertOrder(order)
             }
         }
     }
 
-    fun undoDelete(order: Order) {
+    fun moveToTrash(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.insertOrder(order) // Masukkan kembali data yang baru dihapus
+            dao.moveToTrash(order.id)
+        }
+    }
+
+    fun restoreOrder(order: Order) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.restoreFromTrash(order.id)
+        }
+    }
+
+    fun hardDelete(order: Order) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.deletePermanently(order)
         }
     }
 
@@ -89,9 +97,5 @@ class LaundryViewModel(
 
     suspend fun getOrderById(id: Int): Order? {
         return withContext(Dispatchers.IO) { dao.getOrderById(id) }
-    }
-
-    fun deleteOrder(order: Order) {
-        viewModelScope.launch(Dispatchers.IO) { dao.deleteOrder(order) }
     }
 }
