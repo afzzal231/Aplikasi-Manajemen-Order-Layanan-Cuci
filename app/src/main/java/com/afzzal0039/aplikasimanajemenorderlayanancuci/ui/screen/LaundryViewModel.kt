@@ -21,6 +21,12 @@ class LaundryViewModel(
     val allCategories: StateFlow<List<Category>> = dao.getAllCategories()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val isDarkMode: StateFlow<Boolean> = dataStore.isDarkMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val isGridView: StateFlow<Boolean> = dataStore.isGridLayout
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     init {
         seedCategories()
     }
@@ -40,18 +46,12 @@ class LaundryViewModel(
     val trashOrders: StateFlow<List<Order>> = dao.getTrashOrders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val isGridView: StateFlow<Boolean> = dataStore.isGridLayout
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    val isDarkMode: StateFlow<Boolean> = dataStore.isDarkMode
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    fun toggleTheme(isDark: Boolean) {
+        viewModelScope.launch { dataStore.saveDarkMode(isDark) }
+    }
 
     fun toggleLayout(isGrid: Boolean) {
         viewModelScope.launch { dataStore.saveLayoutSetting(isGrid) }
-    }
-
-    fun toggleTheme(isDark: Boolean) {
-        viewModelScope.launch { dataStore.saveDarkMode(isDark) }
     }
 
     fun insertOrder(nama: String, berat: String, isJaket: Boolean, isSprei: Boolean, paket: String, total: Int, estimasi: String) {
@@ -73,6 +73,18 @@ class LaundryViewModel(
         }
     }
 
+    fun updateOrder(order: Order) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.updateOrder(order)
+        }
+    }
+
+    suspend fun getOrderById(id: Int): Order? {
+        return withContext(Dispatchers.IO) {
+            dao.getOrderById(id)
+        }
+    }
+
     fun moveToTrash(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
             dao.moveToTrash(order.id)
@@ -89,13 +101,5 @@ class LaundryViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             dao.deletePermanently(order)
         }
-    }
-
-    fun updateOrder(order: Order) {
-        viewModelScope.launch(Dispatchers.IO) { dao.updateOrder(order) }
-    }
-
-    suspend fun getOrderById(id: Int): Order? {
-        return withContext(Dispatchers.IO) { dao.getOrderById(id) }
     }
 }

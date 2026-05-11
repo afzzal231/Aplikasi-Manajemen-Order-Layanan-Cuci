@@ -106,27 +106,32 @@ fun EditScreen(
 
             OutlinedTextField(
                 value = berat,
-                onValueChange = { berat = it; isError = false },
-                label = { Text("Berat (Kg)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                isError = isError,
-                modifier = Modifier.fillMaxWidth()
+                onValueChange = { /* Tidak bisa diubah */ },
+                label = { Text("Berat (Kg) - Tidak dapat diubah") },
+                enabled = false,
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Layanan Tambahan:", fontWeight = FontWeight.Bold)
+            Text("Layanan Tambahan (Tidak dapat diubah):", fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = hasJaket, onCheckedChange = { hasJaket = it })
+                Checkbox(checked = hasJaket, onCheckedChange = null, enabled = false)
                 Text("Jaket (+Rp 10.000)")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = hasSprei, onCheckedChange = { hasSprei = it })
+                Checkbox(checked = hasSprei, onCheckedChange = null, enabled = false)
                 Text("Sprei (+Rp 15.000)")
             }
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Pilih Paket:", fontWeight = FontWeight.Bold)
+            Text("Pilih Paket Baru:", fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 categories.forEach { category ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -154,7 +159,7 @@ fun EditScreen(
 
             Button(
                 onClick = {
-                    if (berat.isEmpty() || namaPelanggan.isEmpty() || berat.toFloatOrNull() == null) {
+                    if (namaPelanggan.isEmpty()) {
                         isError = true
                     } else {
                         viewModel.updateOrder(
