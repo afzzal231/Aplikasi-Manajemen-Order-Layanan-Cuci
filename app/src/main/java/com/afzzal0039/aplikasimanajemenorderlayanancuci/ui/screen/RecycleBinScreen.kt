@@ -16,6 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.Screen
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,18 +31,12 @@ fun RecycleBinScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Recycle Bin",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                },
+                title = { Text("Recycle Bin") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            contentDescription = "Kembali"
                         )
                     }
                 },
@@ -56,19 +53,26 @@ fun RecycleBinScreen(
                 modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Recycle Bin Kosong")
+                Text("Tempat Sampah Kosong", style = MaterialTheme.typography.bodyLarge)
             }
         } else {
             LazyColumn(
                 modifier = Modifier
                     .padding(padding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
             ) {
-                items(trashOrders) { order ->
+                items(trashOrders, key = { it.id }) { order ->
+
+                    val hargaFormatted = remember(order.totalHarga) {
+                        @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
+                        rupiahFormat.format(order.totalHarga).replace("Rp", "Rp ")
+                    }
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(4.dp)
+                        elevation = CardDefaults.cardElevation(2.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -81,7 +85,7 @@ fun RecycleBinScreen(
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "${order.paketLayanan} - Rp ${order.totalHarga}",
+                                    text = "${order.paketLayanan} • $hargaFormatted",
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
