@@ -24,6 +24,7 @@ import androidx.navigation.NavHostController
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.Screen
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -65,23 +66,7 @@ fun HistoryScreen(
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState) { data ->
-                Snackbar(
-                    action = {
-                        TextButton(onClick = { data.performAction() }) {
-                            Text(data.visuals.actionLabel ?: "", color = MaterialTheme.colorScheme.inversePrimary)
-                        }
-                    }
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(painterResource(id = R.drawable.outline_delete_24), contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(data.visuals.message)
-                    }
-                }
-            }
-        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Riwayat Pesanan") },
@@ -109,7 +94,7 @@ fun HistoryScreen(
     ) { padding ->
         if (orders.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Belum ada data pesanan aktif.")
+                Text("Belum ada data pesanan aktif.", style = MaterialTheme.typography.bodyLarge)
             }
         } else {
             if (isGridView) {
@@ -120,12 +105,13 @@ fun HistoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(orders) { order ->
+                    items(orders, key = { it.id }) { order ->
                         OrderCard(
                             order = order,
-                            isGrid = true,
                             onDelete = { orderToDelete = order },
-                            onEdit = { navController.navigate("edit_screen/${order.id}") }
+                            onEdit = {
+                                navController.navigate(Screen.Edit.createRoute(order.id))
+                            }
                         )
                     }
                 }
@@ -135,12 +121,13 @@ fun HistoryScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(orders) { order ->
+                    items(orders, key = { it.id }) { order ->
                         OrderCard(
                             order = order,
-                            isGrid = false,
                             onDelete = { orderToDelete = order },
-                            onEdit = { navController.navigate("edit_screen/${order.id}") }
+                            onEdit = {
+                                navController.navigate(Screen.Edit.createRoute(order.id))
+                            }
                         )
                     }
                 }
@@ -186,20 +173,26 @@ fun HistoryScreen(
 @Composable
 fun OrderCard(
     order: Order,
-    isGrid: Boolean,
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
     val context = LocalContext.current
-    @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
-    val hargaFormatted = rupiahFormat.format(order.totalHarga).replace("Rp", "Rp ")
+    val hargaFormatted = remember(order.totalHarga) {
+        @Suppress("DEPRECATION") val rupiahFormat = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
+        rupiahFormat.format(order.totalHarga).replace("Rp", "Rp ")
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(order.namaPelanggan, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = order.namaPelanggan,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1
+            )
             Text("Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium)
             Text("${order.berat} kg", style = MaterialTheme.typography.bodySmall)
             Text(
@@ -209,7 +202,11 @@ fun OrderCard(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-            Text(hargaFormatted, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+            Text(
+                text = hargaFormatted,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 IconButton(onClick = { shareOrder(context, order, hargaFormatted) }) {

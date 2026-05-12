@@ -39,7 +39,7 @@ fun NavGraph(
             )
         }
 
-        composable("recycle_bin_screen") {
+        composable(Screen.RecycleBin.route) {
             RecycleBinScreen(
                 navController = navController,
                 viewModel = viewModel
