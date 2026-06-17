@@ -14,7 +14,7 @@ abstract class OrderDb : RoomDatabase() {
 
     companion object {
         @Volatile
-        private var INSTANCE: OrderDb? = null
+      private var INSTANCE: OrderDb? = null
 
         fun getInstance(context: Context): OrderDb {
             return INSTANCE ?: synchronized(this) {
