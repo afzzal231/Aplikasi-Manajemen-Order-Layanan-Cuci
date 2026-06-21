@@ -75,7 +75,7 @@ class LaundryViewModel(
         viewModelScope.launch { dataStore.saveLayoutSetting(isGrid) }
     }
 
-    fun insertOrder(nama: String, berat: String, isJaket: Boolean, isSprei: Boolean, paket: String, total: Int, estimasi: String) {
+    fun insertOrder(nama: String, berat: String, isJaket: Boolean, isSprei: Boolean, paket: String, total: Int, estimasi: String, imageUri: String?) {
         val beratFloat = berat.toFloatOrNull() ?: 0f
         if (nama.isNotBlank() && beratFloat > 0f) {
             viewModelScope.launch(Dispatchers.IO) {
@@ -87,7 +87,8 @@ class LaundryViewModel(
                     paketLayanan = paket,
                     totalHarga = total,
                     estimasiSelesai = estimasi,
-                    isDeleted = false
+                    isDeleted = false,
+                    imageUri = imageUri
                 )
                 dao.insertOrder(order)
             }
@@ -171,7 +172,7 @@ class LaundryViewModel(
                 val response = LaundryApi.retrofitService.deleteOrder(user.email, orderId)
 
                 if (response.status == "success") {
-                    fetchOrdersFromApi() // Ambil ulang data agar UI ter-update
+                    fetchOrdersFromApi()
                 } else {
                     _apiState.value = ApiState.Error(response.message ?: "Gagal menghapus data")
                 }

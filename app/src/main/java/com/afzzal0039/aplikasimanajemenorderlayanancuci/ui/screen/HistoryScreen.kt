@@ -15,20 +15,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
-import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.Screen
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
-
 
 fun shareOrder(context: Context, order: Order, hargaFormatted: String) {
     val shareText = """
@@ -187,19 +188,40 @@ fun OrderCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = order.namaPelanggan,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1
-            )
-            Text("Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium)
-            Text("${order.berat} kg", style = MaterialTheme.typography.bodySmall)
-            Text(
-                "Estimasi: ${order.estimasiSelesai}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.secondary
-            )
+
+            // --- BAGIAN INI DITAMBAHKAN UNTUK FOTO ---
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Tampilkan foto jika ada URI-nya
+                if (!order.imageUri.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = order.imageUri,
+                        contentDescription = "Foto Bukti Barang",
+                        modifier = Modifier
+                            .size(70.dp)
+                            .clip(MaterialTheme.shapes.medium),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                }
+
+                // Detail teks dibungkus di dalam Column agar rapi di samping foto
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = order.namaPelanggan,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1
+                    )
+                    Text("Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium)
+                    Text("${order.berat} kg", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "Estimasi: ${order.estimasiSelesai}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+            // ----------------------------------------
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
