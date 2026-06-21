@@ -16,6 +16,7 @@ import com.afzzal0039.aplikasimanajemenorderlayanancuci.database.OrderDb
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.theme.AplikasiManajemenOrderLayananCuciTheme
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.SettingsDataStore
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.UserDataStore
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.ViewModelFactory
 
 class MainActivity : ComponentActivity() {
@@ -24,7 +25,9 @@ class MainActivity : ComponentActivity() {
         val database = OrderDb.getInstance(applicationContext)
         val dao = database.dao
         val dataStore = SettingsDataStore(applicationContext)
-        val factory = ViewModelFactory(dao, dataStore)
+        val userDataStore = UserDataStore(applicationContext)
+
+        val factory = ViewModelFactory(dao, dataStore, userDataStore)
         val viewModel: LaundryViewModel = ViewModelProvider(this, factory)[LaundryViewModel::class.java]
 
         setContent {
@@ -36,7 +39,11 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
-                    NavGraph(navController = navController, viewModel = viewModel)
+                    NavGraph(
+                        navController = navController,
+                        viewModel = viewModel,
+                        userDataStore = userDataStore
+                    )
                 }
             }
         }

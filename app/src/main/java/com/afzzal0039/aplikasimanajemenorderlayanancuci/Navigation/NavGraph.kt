@@ -13,11 +13,13 @@ import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.MainScreen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.Screen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.AboutScreen
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.RecycleBinScreen
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.UserDataStore
 
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    viewModel: LaundryViewModel
+    viewModel: LaundryViewModel,
+    userDataStore: UserDataStore
 ) {
     NavHost(
         navController = navController,
@@ -28,6 +30,7 @@ fun NavGraph(
             MainScreen(
                 navController = navController,
                 viewModel = viewModel,
+                userDataStore = userDataStore,
                 onAboutClick = { navController.navigate(Screen.About.route) }
             )
         }
