@@ -1,5 +1,7 @@
 package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -11,12 +13,17 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,7 +43,12 @@ fun EditScreen(
     var paket by rememberSaveable { mutableStateOf("Reguler") }
     var hasJaket by rememberSaveable { mutableStateOf(false) }
     var hasSprei by rememberSaveable { mutableStateOf(false) }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
     var isError by remember { mutableStateOf(false) }
+
+    val imageCropLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
+        if (result.isSuccessful) imageUri = result.uriContent
+    }
 
     LaunchedEffect(orderId) {
         val order = viewModel.getOrderById(orderId)
@@ -46,6 +58,9 @@ fun EditScreen(
             paket = it.paketLayanan
             hasJaket = it.isJaket
             hasSprei = it.isSprei
+            if (!it.imageUri.isNullOrEmpty()) {
+                imageUri = Uri.parse(it.imageUri)
+            }
             isLoading = false
         }
     }
@@ -98,7 +113,8 @@ fun EditScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.Start
             ) {
                 Text("Ubah Data Pesanan", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -153,8 +169,31 @@ fun EditScreen(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Ubah Foto Bukti:", fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            imageCropLauncher.launch(CropImageContractOptions(null, CropImageOptions(imageSourceIncludeCamera = true, fixAspectRatio = true)))
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        if (imageUri != null) {
+                            AsyncImage(model = imageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        } else {
+                            Text("Klik untuk Ambil Foto Baru")
+                        }
+                    }
+                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -181,7 +220,8 @@ fun EditScreen(
                                     isSprei = hasSprei,
                                     paketLayanan = paket,
                                     totalHarga = totalHarga,
-                                    estimasiSelesai = hitungEstimasi(paket)
+                                    estimasiSelesai = hitungEstimasi(paket),
+                                    imageUri = imageUri?.toString()
                                 )
                             )
                             navController.popBackStack()

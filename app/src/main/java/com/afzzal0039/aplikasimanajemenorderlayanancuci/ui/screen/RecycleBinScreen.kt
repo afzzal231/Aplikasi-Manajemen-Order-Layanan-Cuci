@@ -11,12 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
-import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.Screen
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -78,11 +80,25 @@ fun RecycleBinScreen(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+
+                            if (!order.imageUri.isNullOrEmpty()) {
+                                AsyncImage(
+                                    model = order.imageUri,
+                                    contentDescription = "Foto Bukti Barang",
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .clip(MaterialTheme.shapes.medium),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = order.namaPelanggan,
                                     fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1
                                 )
                                 Text(
                                     text = "${order.paketLayanan} • $hargaFormatted",
