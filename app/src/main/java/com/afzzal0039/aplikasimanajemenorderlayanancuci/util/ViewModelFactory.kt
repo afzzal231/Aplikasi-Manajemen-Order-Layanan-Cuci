@@ -7,12 +7,13 @@ import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
 
 class ViewModelFactory(
     private val dao: OrderDao,
-    private val dataStore: SettingsDataStore
+    private val dataStore: SettingsDataStore,
+    private val userDataStore: UserDataStore
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(LaundryViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return LaundryViewModel(dao, dataStore) as T
+            return LaundryViewModel(dao, dataStore, userDataStore) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

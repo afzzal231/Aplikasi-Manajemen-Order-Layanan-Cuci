@@ -41,4 +41,10 @@ interface OrderDao {
 
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun getCategoryCount(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(orders: List<Order>)
+
+    @Query("DELETE FROM laundry_order")
+    suspend fun clearAllOrders()
 }

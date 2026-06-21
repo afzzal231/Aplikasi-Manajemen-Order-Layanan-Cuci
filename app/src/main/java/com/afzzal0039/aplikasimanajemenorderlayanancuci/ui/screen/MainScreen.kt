@@ -1,11 +1,14 @@
 package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
@@ -13,13 +16,27 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.BuildConfig
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.User
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen.ProfilDialog
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.UserDataStore
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,8 +46,14 @@ import java.util.*
 fun MainScreen(
     navController: NavHostController,
     viewModel: LaundryViewModel,
+    userDataStore: UserDataStore,
     onAboutClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val user by userDataStore.userFlow.collectAsState(initial = User("", "", ""))
+    var showProfileDialog by remember { mutableStateOf(false) }
 
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
     var berat by rememberSaveable { mutableStateOf("") }
@@ -69,6 +92,32 @@ fun MainScreen(
             TopAppBar(
                 title = { Text("LaundryAja") },
                 actions = {
+                    if (user.email.isEmpty()) {
+                        IconButton(onClick = {
+                            coroutineScope.launch {
+                                val loggedInUser = signInWithGoogle(context)
+                                if (loggedInUser != null) {
+                                    userDataStore.saveUserData(loggedInUser)
+                                    viewModel.fetchOrdersFromApi()
+                                }
+                            }
+                        }) {
+                            Icon(Icons.Default.AccountCircle, contentDescription = "Login")
+                        }
+                    } else {
+                        IconButton(onClick = { showProfileDialog = true }) {
+                            AsyncImage(
+                                model = user.photoUrl,
+                                contentDescription = "Profil",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                            )
+                        }
+                    }
+
+                    // --- FITUR BAWAAN ASSESMENT 2 ---
                     IconButton(onClick = { viewModel.toggleTheme(!isDarkMode) }) {
                         Icon(
                             painter = painterResource(
@@ -219,7 +268,9 @@ fun MainScreen(
                         showDialog = true
                     }
                 },
-                modifier = Modifier.padding(top = 24.dp).fillMaxWidth()
+                modifier = Modifier
+                    .padding(top = 24.dp)
+                    .fillMaxWidth()
             ) {
                 Text("Simpan Pesanan")
             }
@@ -258,5 +309,53 @@ fun MainScreen(
                 )
             }
         }
+
+        if (showProfileDialog) {
+            ProfilDialog(
+                user = user,
+                onDismissRequest = { showProfileDialog = false },
+                onLogout = {
+                    coroutineScope.launch {
+                        userDataStore.clearUserData()
+                        viewModel.clearApiState()
+                        showProfileDialog = false
+                    }
+                }
+            )
+        }
+    }
+}
+
+suspend fun signInWithGoogle(context: Context): User? {
+    val credentialManager = CredentialManager.create(context)
+
+    val googleIdOption = GetGoogleIdOption.Builder()
+        .setFilterByAuthorizedAccounts(false)
+        .setServerClientId(BuildConfig.API_KEY)
+        .setAutoSelectEnabled(true)
+        .build()
+
+    val request = GetCredentialRequest.Builder()
+        .addCredentialOption(googleIdOption)
+        .build()
+
+    return try {
+        val result = credentialManager.getCredential(context, request)
+        val credential = result.credential
+
+        if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+
+            User(
+                name = googleIdTokenCredential.displayName ?: "Pengguna",
+                email = googleIdTokenCredential.id,
+                photoUrl = googleIdTokenCredential.profilePictureUri?.toString() ?: ""
+            )
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
