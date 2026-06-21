@@ -2,8 +2,10 @@ package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
 import android.content.Context
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -31,6 +34,7 @@ import coil.compose.AsyncImage
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.BuildConfig
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.User
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.ApiState
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.UserDataStore
 import com.canhub.cropper.CropImageContract
@@ -55,6 +59,9 @@ fun MainScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val user by userDataStore.userFlow.collectAsState(initial = User("", "", ""))
+
+    val apiState by viewModel.apiState.collectAsState()
+
     var showProfileDialog by remember { mutableStateOf(false) }
 
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
@@ -97,9 +104,6 @@ fun MainScreen(
             TopAppBar(
                 title = { Text("LaundryAja") },
                 actions = {
-                    IconButton(onClick = { viewModel.toggleTheme(!isDarkMode) }) {
-                        Icon(painter = painterResource(id = if (isDarkMode) R.drawable.baseline_light_mode_24 else R.drawable.baseline_dark_mode_24), contentDescription = null)
-                    }
                     IconButton(onClick = { showProfileDialog = true }) {
                         if (user.email.isEmpty()) Icon(Icons.Default.AccountCircle, null)
                         else AsyncImage(model = user.photoUrl, contentDescription = null, modifier = Modifier.size(32.dp).clip(CircleShape))
@@ -109,89 +113,133 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Image(painter = painterResource(id = R.drawable.laundry), contentDescription = null, modifier = Modifier.size(150.dp).align(Alignment.CenterHorizontally))
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(value = namaPelanggan, onValueChange = { namaPelanggan = it }, label = { Text("Nama Pelanggan") }, modifier = Modifier.fillMaxWidth())
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(value = berat, onValueChange = { berat = it; isError = false }, label = { Text("Berat (Kg)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), isError = isError, modifier = Modifier.fillMaxWidth())
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Layanan Tambahan:", fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = hasJaket, onCheckedChange = { hasJaket = it })
-                Text("Jaket (+Rp 10.000)")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = hasSprei, onCheckedChange = { hasSprei = it })
-                Text("Sprei (+Rp 15.000)")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Pilih Paket:", fontWeight = FontWeight.Bold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                categories.forEach { category ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = (paket == category.name), onClick = { paket = category.name })
-                        Text(category.name)
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Foto Bukti Barang:", fontWeight = FontWeight.Bold)
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.Start
             ) {
-                OutlinedButton(
-                    onClick = {
-                        imageCropLauncher.launch(CropImageContractOptions(null, CropImageOptions(imageSourceIncludeCamera = true, fixAspectRatio = true)))
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    if (imageUri != null) {
-                        AsyncImage(model = imageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    } else {
-                        Text("Klik untuk Ambil Foto")
+                Image(painter = painterResource(id = R.drawable.laundry), contentDescription = null, modifier = Modifier.size(150.dp).align(Alignment.CenterHorizontally))
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(value = namaPelanggan, onValueChange = { namaPelanggan = it }, label = { Text("Nama Pelanggan") }, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(value = berat, onValueChange = { berat = it; isError = false }, label = { Text("Berat (Kg)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), isError = isError, modifier = Modifier.fillMaxWidth())
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Layanan Tambahan:", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = hasJaket, onCheckedChange = { hasJaket = it })
+                    Text("Jaket (+Rp 10.000)")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = hasSprei, onCheckedChange = { hasSprei = it })
+                    Text("Sprei (+Rp 15.000)")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Pilih Paket:", fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    categories.forEach { category ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = (paket == category.name), onClick = { paket = category.name })
+                            Text(category.name)
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Foto Bukti Barang:", fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            imageCropLauncher.launch(CropImageContractOptions(null, CropImageOptions(imageSourceIncludeCamera = true, fixAspectRatio = true)))
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        if (imageUri != null) {
+                            AsyncImage(model = imageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        } else {
+                            Text("Klik untuk Ambil Foto")
+                        }
+                    }
+                }
+
+                if (isError) {
+                    Text("Peringatan: Nama, Berat, dan Foto harus diisi!", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
+                }
+
+                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    Text("Total: $totalFormatted", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineSmall)
+                }
+
+                Button(
+                    onClick = {
+                        if (namaPelanggan.isNotEmpty() && berat.isNotEmpty() && imageUri != null) {
+                            showDialog = true
+                            isError = false
+                        } else {
+                            isError = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Simpan Pesanan")
                 }
             }
 
-            if (isError) {
-                Text("Peringatan: Nama, Berat, dan Foto harus diisi!", color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
+            if (apiState is ApiState.Loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 4.dp
+                    )
+                }
             }
 
-            Card(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Text("Total: $totalFormatted", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineSmall)
-            }
+            if (apiState is ApiState.Error) {
+                val errorMessage = (apiState as ApiState.Error).message
 
-            Button(
-                onClick = {
-                    if (namaPelanggan.isNotEmpty() && berat.isNotEmpty() && imageUri != null) {
-                        showDialog = true
-                        isError = false
-                    } else {
-                        isError = true
+                val displayMessage = if (errorMessage.contains("failed to connect") || errorMessage.contains("Unable to resolve host") || errorMessage.contains("timeout")) {
+                    "Tidak ada koneksi internet atau server tidak dapat dijangkau. Data tetap disimpan secara offline dan dapat dikirim nanti."
+                } else {
+                    errorMessage
+                }
+
+                AlertDialog(
+                    onDismissRequest = { viewModel.clearApiState() },
+                    title = { Text("Informasi Sistem") },
+                    text = { Text(displayMessage) },
+                    confirmButton = {
+                        Button(onClick = { viewModel.clearApiState() }) {
+                            Text("Tutup")
+                        }
                     }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Simpan Pesanan")
+                )
+            }
+
+            if (apiState is ApiState.Success) {
+                LaunchedEffect(Unit) {
+                    Toast.makeText(context, "Data berhasil disinkronisasi dengan server!", Toast.LENGTH_SHORT).show()
+                    viewModel.clearApiState()
+                }
             }
         }
 
@@ -202,7 +250,28 @@ fun MainScreen(
                 text = { Text("Simpan pesanan atas nama $namaPelanggan?") },
                 confirmButton = {
                     Button(onClick = {
-                        viewModel.insertOrder(namaPelanggan, berat, hasJaket, hasSprei, paket, totalHarga, hitungEstimasi(paket), imageUri = imageUri?.toString())
+                        val imageFile = imageUri?.let { uri ->
+                            val tempFile = java.io.File(context.cacheDir, "upload_image.jpg")
+                            val inputStream = context.contentResolver.openInputStream(uri)
+                            val outputStream = java.io.FileOutputStream(tempFile)
+                            inputStream?.copyTo(outputStream)
+                            inputStream?.close()
+                            outputStream.close()
+                            tempFile
+                        }
+
+                        viewModel.insertOrder(
+                            nama = namaPelanggan,
+                            berat = berat,
+                            isJaket = hasJaket,
+                            isSprei = hasSprei,
+                            paket = paket,
+                            total = totalHarga,
+                            estimasi = hitungEstimasi(paket),
+                            imageUri = imageUri?.toString(),
+                            imageFile = imageFile
+                        )
+
                         namaPelanggan = ""
                         berat = ""
                         imageUri = null
@@ -218,6 +287,8 @@ fun MainScreen(
         if (showProfileDialog) {
             ProfilDialog(
                 user = user,
+                isDarkMode = isDarkMode,
+                onThemeChange = { viewModel.toggleTheme(!isDarkMode) },
                 onDismissRequest = { showProfileDialog = false },
                 onLoginClick = {
                     showProfileDialog = false

@@ -23,6 +23,8 @@ import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.User
 @Composable
 fun ProfilDialog(
     user: User,
+    isDarkMode: Boolean,
+    onThemeChange: () -> Unit,
     onDismissRequest: () -> Unit,
     onLoginClick: () -> Unit,
     onLogoutClick: () -> Unit,
@@ -80,7 +82,23 @@ fun ProfilDialog(
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // --- BAGIAN MENU NAVIGASI ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Mode Gelap",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Switch(
+                        checked = isDarkMode,
+                        onCheckedChange = { onThemeChange() }
+                    )
+                }
+
                 TextButton(
                     onClick = onHistoryClick,
                     modifier = Modifier.fillMaxWidth()

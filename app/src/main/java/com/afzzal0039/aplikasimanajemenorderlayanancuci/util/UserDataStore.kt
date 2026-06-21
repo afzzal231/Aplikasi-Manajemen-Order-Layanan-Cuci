@@ -28,7 +28,6 @@ class UserDataStore(private val context: Context) {
         )
     }
 
-    // Menyimpan data User saat Login berhasil
     suspend fun saveUserData(user: User) {
         context.userDataStore.edit { preferences ->
             preferences[USER_NAME] = user.name
@@ -37,7 +36,6 @@ class UserDataStore(private val context: Context) {
         }
     }
 
-    // Menghapus data User saat Logout
     suspend fun clearUserData() {
         context.userDataStore.edit { preferences ->
             preferences.clear()
