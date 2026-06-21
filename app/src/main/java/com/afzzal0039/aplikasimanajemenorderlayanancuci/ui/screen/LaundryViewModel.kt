@@ -1,12 +1,12 @@
 package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.database.OrderDao
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Category
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.SettingsDataStore
-// Import tambahan untuk Assesment 3
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.UserDataStore
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.network.LaundryApi
 import kotlinx.coroutines.Dispatchers
@@ -18,8 +18,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 
 sealed class ApiState {
     object Idle : ApiState()
@@ -75,7 +79,7 @@ class LaundryViewModel(
         viewModelScope.launch { dataStore.saveLayoutSetting(isGrid) }
     }
 
-    fun insertOrder(nama: String, berat: String, isJaket: Boolean, isSprei: Boolean, paket: String, total: Int, estimasi: String, imageUri: String?) {
+    fun insertOrder(nama: String, berat: String, isJaket: Boolean, isSprei: Boolean, paket: String, total: Int, estimasi: String, imageUri: String?, imageFile: File?) {
         val beratFloat = berat.toFloatOrNull() ?: 0f
         if (nama.isNotBlank() && beratFloat > 0f) {
             viewModelScope.launch(Dispatchers.IO) {
@@ -91,6 +95,17 @@ class LaundryViewModel(
                     imageUri = imageUri
                 )
                 dao.insertOrder(order)
+
+                if (imageFile != null) {
+                    val namaLayananBody = paket.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val ketBody = nama.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val requestFile = imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                    val body = MultipartBody.Part.createFormData("image", imageFile.name, requestFile)
+
+                    withContext(Dispatchers.Main) {
+                        addOrderToApi(namaLayananBody, ketBody, body)
+                    }
+                }
             }
         }
     }
@@ -124,6 +139,7 @@ class LaundryViewModel(
             dao.deletePermanently(order)
         }
     }
+
     fun fetchOrdersFromApi() {
         viewModelScope.launch {
             _apiState.value = ApiState.Loading
@@ -151,14 +167,27 @@ class LaundryViewModel(
             _apiState.value = ApiState.Loading
             try {
                 val user = userFlow.first()
+
+                // Cek apakah email kosong
+                if (user.email.isEmpty()) {
+                    Log.e("API_DEBUG", "GAGAL KIRIM: Email kosong. Anda belum Login Google di aplikasi!")
+                    return@launch
+                }
+
+                Log.d("API_DEBUG", "Mulai mengirim data ke server...")
+
                 val response = LaundryApi.retrofitService.postOrder(user.email, namaLayanan, keterangan, image)
 
                 if (response.status == "success") {
+                    Log.d("API_DEBUG", "BERHASIL: Data sukses masuk ke database!")
                     fetchOrdersFromApi()
                 } else {
+                    Log.e("API_DEBUG", "DITOLAK SERVER: ${response.message}")
                     _apiState.value = ApiState.Error(response.message ?: "Gagal menambah data")
                 }
             } catch (e: Exception) {
+                Log.e("API_DEBUG", "CRASH/GAGAL KONEKSI: ${e.message}")
+                e.printStackTrace()
                 _apiState.value = ApiState.Error(e.message ?: "Gagal menghubungi server")
             }
         }
