@@ -188,8 +188,6 @@ fun OrderCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-
-            // --- BAGIAN INI DITAMBAHKAN UNTUK FOTO ---
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Tampilkan foto jika ada URI-nya
                 if (!order.imageUri.isNullOrEmpty()) {
@@ -204,7 +202,6 @@ fun OrderCard(
                     Spacer(modifier = Modifier.width(12.dp))
                 }
 
-                // Detail teks dibungkus di dalam Column agar rapi di samping foto
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = order.namaPelanggan,
@@ -221,7 +218,6 @@ fun OrderCard(
                     )
                 }
             }
-            // ----------------------------------------
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(

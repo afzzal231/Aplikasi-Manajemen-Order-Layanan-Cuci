@@ -16,7 +16,7 @@ import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Query
 
-private const val BASE_URL = "http://10.0.2.2/laundry_api/"
+private const val BASE_URL = "http://laundryaja.rf.gd/"
 
 private val moshi = Moshi.Builder()
     .add(KotlinJsonAdapterFactory())
