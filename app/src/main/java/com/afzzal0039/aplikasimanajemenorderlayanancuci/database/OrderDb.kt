@@ -7,14 +7,14 @@ import androidx.room.RoomDatabase
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Category
 
-@Database(entities = [Order::class, Category::class], version = 3, exportSchema = false)
+@Database(entities = [Order::class, Category::class], version = 4, exportSchema = false)
 abstract class OrderDb : RoomDatabase() {
 
     abstract val dao: OrderDao
 
     companion object {
         @Volatile
-      private var INSTANCE: OrderDb? = null
+        private var INSTANCE: OrderDb? = null
 
         fun getInstance(context: Context): OrderDb {
             return INSTANCE ?: synchronized(this) {
@@ -23,8 +23,7 @@ abstract class OrderDb : RoomDatabase() {
                     OrderDb::class.java,
                     "order_db"
                 )
-
-                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .fallbackToDestructiveMigration(false)
                     .build()
                 INSTANCE = instance
                 instance

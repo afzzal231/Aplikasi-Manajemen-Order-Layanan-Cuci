@@ -15,5 +15,6 @@ data class Order(
     val totalHarga: Int,
     val estimasiSelesai: String,
     val tanggalInput: Long = System.currentTimeMillis(),
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val imageUri: String? = null
 )
