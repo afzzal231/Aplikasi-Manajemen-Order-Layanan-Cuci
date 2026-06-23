@@ -44,6 +44,7 @@ import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -65,6 +66,8 @@ fun MainScreen(
     val apiState by viewModel.apiState.collectAsState()
 
     var showProfileDialog by remember { mutableStateOf(false) }
+
+    var isAuthLoading by remember { mutableStateOf(false) }
 
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
     var berat by rememberSaveable { mutableStateOf("") }
@@ -198,7 +201,10 @@ fun MainScreen(
 
                 Button(
                     onClick = {
-                        if (namaPelanggan.isNotEmpty() && berat.isNotEmpty() && imageUri != null) {
+                        if (user.email.isEmpty()) {
+                            Toast.makeText(context, "Silakan login dengan Google terlebih dahulu untuk menyimpan pesanan!", Toast.LENGTH_LONG).show()
+                            showProfileDialog = true
+                        } else if (namaPelanggan.isNotEmpty() && berat.isNotEmpty() && imageUri != null) {
                             showDialog = true
                             isError = false
                         } else {
@@ -211,7 +217,7 @@ fun MainScreen(
                 }
             }
 
-            if (apiState is ApiState.Loading) {
+            if (apiState is ApiState.Loading || isAuthLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -303,19 +309,31 @@ fun MainScreen(
                 onDismissRequest = { showProfileDialog = false },
                 onLoginClick = {
                     showProfileDialog = false
+                    isAuthLoading = true
+
                     coroutineScope.launch {
                         val loggedInUser = signInWithGoogle(context)
                         if (loggedInUser != null) {
                             userDataStore.saveUserData(loggedInUser)
                             viewModel.fetchOrdersFromApi()
+                            Toast.makeText(context, "Selamat datang, ${loggedInUser.name}!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Login dibatalkan atau gagal. Coba lagi.", Toast.LENGTH_SHORT).show()
                         }
+
+                        isAuthLoading = false
                     }
                 },
                 onLogoutClick = {
+                    showProfileDialog = false
+                    isAuthLoading = true
+
                     coroutineScope.launch {
+                        delay(1000L)
                         userDataStore.clearUserData()
                         viewModel.clearApiState()
-                        showProfileDialog = false
+                        isAuthLoading = false
+                        Toast.makeText(context, "Berhasil logout.", Toast.LENGTH_SHORT).show()
                     }
                 },
                 onHistoryClick = {
