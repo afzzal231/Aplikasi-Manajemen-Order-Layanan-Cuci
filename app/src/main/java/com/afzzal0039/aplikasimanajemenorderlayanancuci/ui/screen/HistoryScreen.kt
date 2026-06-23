@@ -2,6 +2,7 @@ package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +30,7 @@ import androidx.navigation.NavHostController
 import coil.compose.SubcomposeAsyncImage
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
+import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.ApiState
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
@@ -63,12 +65,12 @@ fun HistoryScreen(
     viewModel: LaundryViewModel
 ) {
     val orders by viewModel.allOrders.collectAsState()
+    val apiState by viewModel.apiState.collectAsState()
     var orderToDelete by remember { mutableStateOf<Order?>(null) }
     val isGridView by viewModel.isGridView.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-
     val context = LocalContext.current
 
     Scaffold(
@@ -101,46 +103,82 @@ fun HistoryScreen(
             )
         }
     ) { padding ->
-        if (orders.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Belum ada data pesanan aktif.", style = MaterialTheme.typography.bodyLarge)
-            }
-        } else {
-            if (isGridView) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(orders, key = { it.id }) { order ->
-                        OrderCard(
-                            order = order,
-                            isGridView = true,
-                            onDelete = { orderToDelete = order },
-                            onEdit = {
-                                navController.navigate(Screen.Edit.createRoute(order.id))
-                            }
-                        )
-                    }
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+
+            if (orders.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Belum ada data pesanan aktif.", style = MaterialTheme.typography.bodyLarge)
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(orders, key = { it.id }) { order ->
-                        OrderCard(
-                            order = order,
-                            isGridView = false,
-                            onDelete = { orderToDelete = order },
-                            onEdit = {
-                                navController.navigate(Screen.Edit.createRoute(order.id))
-                            }
-                        )
+                if (isGridView) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(orders, key = { it.id }) { order ->
+                            OrderCard(
+                                order = order,
+                                isGridView = true,
+                                onDelete = { orderToDelete = order },
+                                onEdit = {
+                                    navController.navigate(Screen.Edit.createRoute(order.id))
+                                }
+                            )
+                        }
                     }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(orders, key = { it.id }) { order ->
+                            OrderCard(
+                                order = order,
+                                isGridView = false,
+                                onDelete = { orderToDelete = order },
+                                onEdit = {
+                                    navController.navigate(Screen.Edit.createRoute(order.id))
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (apiState is ApiState.Loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 4.dp
+                    )
+                }
+            }
+
+            if (apiState is ApiState.Error) {
+                val errorMessage = (apiState as ApiState.Error).message
+                AlertDialog(
+                    onDismissRequest = { viewModel.clearApiState() },
+                    title = { Text("Informasi Sistem") },
+                    text = { Text(errorMessage) },
+                    confirmButton = {
+                        Button(onClick = { viewModel.clearApiState() }) { Text("Tutup") }
+                    }
+                )
+            }
+
+            if (apiState is ApiState.Success) {
+                LaunchedEffect(Unit) {
+                    Toast.makeText(context, "Sinkronisasi Berhasil!", Toast.LENGTH_SHORT).show()
+                    viewModel.clearApiState()
                 }
             }
         }
