@@ -73,7 +73,6 @@ class LaundryViewModel(
         val beratFloat = berat.toFloatOrNull() ?: 0f
         if (nama.isNotBlank() && beratFloat > 0f) {
             viewModelScope.launch(Dispatchers.IO) {
-
                 val order = Order(
                     namaPelanggan = nama, berat = beratFloat, isJaket = isJaket, isSprei = isSprei,
                     paketLayanan = paket, totalHarga = total, estimasiSelesai = estimasi, isDeleted = false, imageUri = imageUri
@@ -114,7 +113,10 @@ class LaundryViewModel(
             _apiState.value = ApiState.Loading
             try {
                 val user = userFlow.first()
-                if (user.email.isEmpty()) return@launch
+                if (user.email.isEmpty()) {
+                    _apiState.value = ApiState.Error("Silakan login dengan Google terlebih dahulu untuk mensinkronisasi data offline.")
+                    return@launch
+                }
 
                 val localOrders = dao.getAllActiveOrders().first()
 
@@ -186,57 +188,82 @@ class LaundryViewModel(
 
     fun updateOrder(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val user = userFlow.first()
-                val response = LaundryApi.retrofitService.updateOrder(
-                    userId = user.email, action = "update", orderId = order.id, namaPelanggan = order.namaPelanggan,
-                    paketLayanan = order.paketLayanan, berat = order.berat, totalHarga = order.totalHarga,
-                    estimasiSelesai = order.estimasiSelesai, isJaket = if (order.isJaket) 1 else 0, isSprei = if (order.isSprei) 1 else 0
-                )
-                if (response.status == "success") {
+            val user = userFlow.first()
+            if (user.email.isEmpty()) {
+                dao.updateOrder(order)
+            } else {
+                try {
+                    val response = LaundryApi.retrofitService.updateOrder(
+                        userId = user.email, action = "update", orderId = order.id, namaPelanggan = order.namaPelanggan,
+                        paketLayanan = order.paketLayanan, berat = order.berat, totalHarga = order.totalHarga,
+                        estimasiSelesai = order.estimasiSelesai, isJaket = if (order.isJaket) 1 else 0, isSprei = if (order.isSprei) 1 else 0
+                    )
+                    if (response.status == "success") {
+                        dao.updateOrder(order)
+                        fetchOrdersFromApi()
+                    }
+                } catch (e: Exception) {
                     dao.updateOrder(order)
-                    fetchOrdersFromApi()
                 }
-            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal update: ${e.message}") }
+            }
         }
     }
 
     fun moveToTrash(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val user = userFlow.first()
-                val response = LaundryApi.retrofitService.updateTrashStatus(user.email, "trash", order.id)
-                if (response.status == "success") {
+            val user = userFlow.first()
+            if (user.email.isEmpty()) {
+                dao.moveToTrash(order.id)
+            } else {
+                try {
+                    val response = LaundryApi.retrofitService.updateTrashStatus(user.email, "trash", order.id)
+                    if (response.status == "success") {
+                        dao.moveToTrash(order.id)
+                        fetchOrdersFromApi()
+                    }
+                } catch (e: Exception) {
                     dao.moveToTrash(order.id)
-                    fetchOrdersFromApi()
                 }
-            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal hapus: ${e.message}") }
+            }
         }
     }
 
     fun restoreOrder(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val user = userFlow.first()
-                val response = LaundryApi.retrofitService.updateTrashStatus(user.email, "restore", order.id)
-                if (response.status == "success") {
+            val user = userFlow.first()
+            if (user.email.isEmpty()) {
+                dao.restoreFromTrash(order.id)
+            } else {
+                try {
+                    val response = LaundryApi.retrofitService.updateTrashStatus(user.email, "restore", order.id)
+                    if (response.status == "success") {
+                        dao.restoreFromTrash(order.id)
+                        fetchOrdersFromApi()
+                    }
+                } catch (e: Exception) {
                     dao.restoreFromTrash(order.id)
-                    fetchOrdersFromApi()
                 }
-            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal mengembalikan: ${e.message}") }
+            }
         }
     }
 
     fun hardDelete(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val user = userFlow.first()
-                val response = LaundryApi.retrofitService.deleteOrder(user.email, order.id)
-                if (response.status == "success") {
+            val user = userFlow.first()
+            if (user.email.isEmpty()) {
+                // HANYA LOKAL
+                dao.deletePermanently(order)
+            } else {
+                try {
+                    val response = LaundryApi.retrofitService.deleteOrder(user.email, order.id)
+                    if (response.status == "success") {
+                        dao.deletePermanently(order)
+                        fetchOrdersFromApi()
+                    }
+                } catch (e: Exception) {
                     dao.deletePermanently(order)
-                    fetchOrdersFromApi()
                 }
-            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal hapus permanen: ${e.message}") }
+            }
         }
     }
 
