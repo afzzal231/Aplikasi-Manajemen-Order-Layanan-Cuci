@@ -47,4 +47,7 @@ interface OrderDao {
 
     @Query("DELETE FROM laundry_order")
     suspend fun clearAllOrders()
+
+    @Query("DELETE FROM laundry_order")
+    suspend fun deleteAllOrders()
 }
