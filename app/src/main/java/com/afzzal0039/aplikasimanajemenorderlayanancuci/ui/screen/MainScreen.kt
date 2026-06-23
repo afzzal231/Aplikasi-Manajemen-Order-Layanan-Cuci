@@ -16,6 +16,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
+// --- IMPORT FITUR PULL TO REFRESH BOX MATERIAL 3 ---
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+// ----------------------------------------------------
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -68,6 +71,7 @@ fun MainScreen(
     var showProfileDialog by remember { mutableStateOf(false) }
 
     var isAuthLoading by remember { mutableStateOf(false) }
+    var isPullRefreshing by remember { mutableStateOf(false) } // Mendeteksi tarikan layar
 
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
     var berat by rememberSaveable { mutableStateOf("") }
@@ -104,6 +108,12 @@ fun MainScreen(
         return SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(calendar.time)
     }
 
+    LaunchedEffect(apiState) {
+        if (apiState !is ApiState.Loading) {
+            isPullRefreshing = false
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -118,7 +128,14 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        PullToRefreshBox(
+            isRefreshing = isPullRefreshing,
+            onRefresh = {
+                isPullRefreshing = true
+                viewModel.syncOfflineOrders(context)
+            },
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
 
             Column(
                 modifier = Modifier
@@ -217,7 +234,7 @@ fun MainScreen(
                 }
             }
 
-            if (apiState is ApiState.Loading || isAuthLoading) {
+            if ((apiState is ApiState.Loading && !isPullRefreshing) || isAuthLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -234,27 +251,38 @@ fun MainScreen(
             if (apiState is ApiState.Error) {
                 val errorMessage = (apiState as ApiState.Error).message
 
-                val displayMessage = if (errorMessage.contains("failed to connect") || errorMessage.contains("Unable to resolve host") || errorMessage.contains("timeout")) {
-                    "Tidak ada koneksi internet atau server tidak dapat dijangkau. Data tetap disimpan secara offline dan dapat dikirim nanti."
-                } else {
-                    errorMessage
-                }
-
-                AlertDialog(
-                    onDismissRequest = { viewModel.clearApiState() },
-                    title = { Text("Informasi Sistem") },
-                    text = { Text(displayMessage) },
-                    confirmButton = {
-                        Button(onClick = { viewModel.clearApiState() }) {
-                            Text("Tutup")
-                        }
+                if (isPullRefreshing) {
+                    LaunchedEffect(apiState) {
+                        Toast.makeText(context, "Maaf, internet anda tidak ada \uD83D\uDE22", Toast.LENGTH_SHORT).show()
+                        viewModel.clearApiState()
                     }
-                )
+                } else {
+                    val displayMessage = if (errorMessage.contains("failed to connect") || errorMessage.contains("Unable to resolve host") || errorMessage.contains("timeout")) {
+                        "Tidak ada koneksi internet atau server tidak dapat dijangkau. Data tetap disimpan secara offline dan dapat dikirim nanti."
+                    } else {
+                        errorMessage
+                    }
+
+                    AlertDialog(
+                        onDismissRequest = { viewModel.clearApiState() },
+                        title = { Text("Informasi Sistem") },
+                        text = { Text(displayMessage) },
+                        confirmButton = {
+                            Button(onClick = { viewModel.clearApiState() }) {
+                                Text("Tutup")
+                            }
+                        }
+                    )
+                }
             }
 
             if (apiState is ApiState.Success) {
                 LaunchedEffect(Unit) {
-                    Toast.makeText(context, "Data berhasil disinkronisasi dengan server!", Toast.LENGTH_SHORT).show()
+                    if (isPullRefreshing) {
+                        Toast.makeText(context, "Koneksi stabil. Sinkronisasi sukses!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Pesanan berhasil disimpan & disinkronisasi!", Toast.LENGTH_SHORT).show()
+                    }
                     viewModel.clearApiState()
                 }
             }

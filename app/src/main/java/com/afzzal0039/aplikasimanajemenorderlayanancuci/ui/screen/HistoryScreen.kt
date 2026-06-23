@@ -10,11 +10,13 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,6 +75,8 @@ fun HistoryScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    val isRefreshing = apiState is ApiState.Loading
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
@@ -84,9 +88,6 @@ fun HistoryScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.syncOfflineOrders(context) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Sinkronisasi Data Offline")
-                    }
                     IconButton(onClick = { viewModel.toggleLayout(!isGridView) }) {
                         Icon(
                             painter = painterResource(
@@ -103,10 +104,19 @@ fun HistoryScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.syncOfflineOrders(context) },
+            modifier = Modifier.fillMaxSize().padding(padding)
+        ) {
 
             if (orders.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()), // Tetap bisa ditarik ke bawah meski kosong
+                    contentAlignment = Alignment.Center
+                ) {
                     Text("Belum ada data pesanan aktif.", style = MaterialTheme.typography.bodyLarge)
                 }
             } else {
@@ -149,35 +159,16 @@ fun HistoryScreen(
                 }
             }
 
-            if (apiState is ApiState.Loading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.4f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.primary,
-                        strokeWidth = 4.dp
-                    )
-                }
-            }
-
             if (apiState is ApiState.Error) {
-                val errorMessage = (apiState as ApiState.Error).message
-                AlertDialog(
-                    onDismissRequest = { viewModel.clearApiState() },
-                    title = { Text("Informasi Sistem") },
-                    text = { Text(errorMessage) },
-                    confirmButton = {
-                        Button(onClick = { viewModel.clearApiState() }) { Text("Tutup") }
-                    }
-                )
+                LaunchedEffect(apiState) {
+                    Toast.makeText(context, "Maaf, internet anda tidak ada \uD83D\uDE22", Toast.LENGTH_SHORT).show()
+                    viewModel.clearApiState()
+                }
             }
 
             if (apiState is ApiState.Success) {
                 LaunchedEffect(Unit) {
-                    Toast.makeText(context, "Sinkronisasi Berhasil!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Data berhasil diperbarui!", Toast.LENGTH_SHORT).show()
                     viewModel.clearApiState()
                 }
             }
