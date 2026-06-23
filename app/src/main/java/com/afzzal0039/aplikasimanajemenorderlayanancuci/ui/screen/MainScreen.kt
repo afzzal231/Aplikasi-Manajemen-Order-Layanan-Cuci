@@ -6,6 +6,8 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -155,25 +157,34 @@ fun MainScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Foto Bukti Barang:", fontWeight = FontWeight.Bold)
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    OutlinedButton(
-                        onClick = {
+                        .padding(vertical = 8.dp)
+                        .heightIn(min = 200.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium)
+                        .clickable {
                             imageCropLauncher.launch(CropImageContractOptions(null, CropImageOptions(imageSourceIncludeCamera = true, fixAspectRatio = true)))
                         },
-                        modifier = Modifier.fillMaxSize(),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        if (imageUri != null) {
-                            AsyncImage(model = imageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                        } else {
-                            Text("Klik untuk Ambil Foto")
-                        }
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (imageUri != null) {
+                        AsyncImage(
+                            model = imageUri,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 200.dp, max = 400.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = "Klik untuk Ambil Foto",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
                     }
                 }
 

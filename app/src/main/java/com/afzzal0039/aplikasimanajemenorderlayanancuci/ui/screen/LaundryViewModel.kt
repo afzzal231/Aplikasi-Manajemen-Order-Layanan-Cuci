@@ -1,5 +1,7 @@
 package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,17 +12,11 @@ import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.SettingsDataStore
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.util.UserDataStore
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.network.LaundryApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
@@ -58,9 +54,7 @@ class LaundryViewModel(
     val trashOrders: StateFlow<List<Order>> = dao.getTrashOrders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    init {
-        seedCategories()
-    }
+    init { seedCategories() }
 
     private fun seedCategories() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -71,147 +65,180 @@ class LaundryViewModel(
         }
     }
 
-    fun toggleTheme(isDark: Boolean) {
-        viewModelScope.launch { dataStore.saveDarkMode(isDark) }
-    }
-
-    fun toggleLayout(isGrid: Boolean) {
-        viewModelScope.launch { dataStore.saveLayoutSetting(isGrid) }
-    }
+    fun toggleTheme(isDark: Boolean) { viewModelScope.launch { dataStore.saveDarkMode(isDark) } }
+    fun toggleLayout(isGrid: Boolean) { viewModelScope.launch { dataStore.saveLayoutSetting(isGrid) } }
+    suspend fun getOrderById(id: Int): Order? = withContext(Dispatchers.IO) { dao.getOrderById(id) }
 
     fun insertOrder(nama: String, berat: String, isJaket: Boolean, isSprei: Boolean, paket: String, total: Int, estimasi: String, imageUri: String?, imageFile: File?) {
         val beratFloat = berat.toFloatOrNull() ?: 0f
         if (nama.isNotBlank() && beratFloat > 0f) {
             viewModelScope.launch(Dispatchers.IO) {
+
                 val order = Order(
-                    namaPelanggan = nama,
-                    berat = beratFloat,
-                    isJaket = isJaket,
-                    isSprei = isSprei,
-                    paketLayanan = paket,
-                    totalHarga = total,
-                    estimasiSelesai = estimasi,
-                    isDeleted = false,
-                    imageUri = imageUri
+                    namaPelanggan = nama, berat = beratFloat, isJaket = isJaket, isSprei = isSprei,
+                    paketLayanan = paket, totalHarga = total, estimasiSelesai = estimasi, isDeleted = false, imageUri = imageUri
                 )
                 dao.insertOrder(order)
 
                 if (imageFile != null) {
-                    val namaLayananBody = paket.toRequestBody("text/plain".toMediaTypeOrNull())
-                    val ketBody = nama.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val namaPelangganBody = nama.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val paketLayananBody = paket.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val beratBody = beratFloat.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                    val totalHargaBody = total.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                    val estimasiBody = estimasi.toRequestBody("text/plain".toMediaTypeOrNull())
+                    val isJaketBody = (if (isJaket) "1" else "0").toRequestBody("text/plain".toMediaTypeOrNull())
+                    val isSpreiBody = (if (isSprei) "1" else "0").toRequestBody("text/plain".toMediaTypeOrNull())
                     val requestFile = imageFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
                     val body = MultipartBody.Part.createFormData("image", imageFile.name, requestFile)
 
-                    withContext(Dispatchers.Main) {
-                        addOrderToApi(namaLayananBody, ketBody, body)
+                    try {
+                        val user = userFlow.first()
+                        if (user.email.isNotEmpty()) {
+                            val response = LaundryApi.retrofitService.postOrder(
+                                user.email, namaPelangganBody, paketLayananBody, beratBody, totalHargaBody, estimasiBody, isJaketBody, isSpreiBody, body
+                            )
+                            if (response.status == "success") {
+                                fetchOrdersFromApi()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        _apiState.value = ApiState.Error("Data tersimpan offline. Harap klik ikon Sinkronisasi (Pojok Kanan Atas) di Riwayat Pesanan saat internet menyala.")
                     }
                 }
+            }
+        }
+    }
+
+    fun syncOfflineOrders(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _apiState.value = ApiState.Loading
+            try {
+                val user = userFlow.first()
+                if (user.email.isEmpty()) return@launch
+
+                val localOrders = dao.getAllActiveOrders().first()
+
+                val offlineOrders = localOrders.filter {
+                    it.imageUri != null && !it.imageUri.startsWith("http")
+                }
+
+                if (offlineOrders.isEmpty()) {
+                    fetchOrdersFromApi()
+                    return@launch
+                }
+
+                for (order in offlineOrders) {
+                    try {
+                        val uri = Uri.parse(order.imageUri)
+                        val tempFile = java.io.File(context.cacheDir, "sync_image_${System.currentTimeMillis()}.jpg")
+                        val inputStream = context.contentResolver.openInputStream(uri)
+                        val outputStream = java.io.FileOutputStream(tempFile)
+                        inputStream?.copyTo(outputStream)
+                        inputStream?.close()
+                        outputStream.close()
+
+                        val namaBody = order.namaPelanggan.toRequestBody("text/plain".toMediaTypeOrNull())
+                        val paketBody = order.paketLayanan.toRequestBody("text/plain".toMediaTypeOrNull())
+                        val beratBody = order.berat.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                        val hargaBody = order.totalHarga.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+                        val estimasiBody = order.estimasiSelesai.toRequestBody("text/plain".toMediaTypeOrNull())
+                        val isJaketBody = (if (order.isJaket) "1" else "0").toRequestBody("text/plain".toMediaTypeOrNull())
+                        val isSpreiBody = (if (order.isSprei) "1" else "0").toRequestBody("text/plain".toMediaTypeOrNull())
+                        val requestFile = tempFile.asRequestBody("image/jpeg".toMediaTypeOrNull())
+                        val body = MultipartBody.Part.createFormData("image", tempFile.name, requestFile)
+
+                        val response = LaundryApi.retrofitService.postOrder(
+                            user.email, namaBody, paketBody, beratBody, hargaBody, estimasiBody, isJaketBody, isSpreiBody, body
+                        )
+
+                        if (response.status == "success") {
+                            dao.deletePermanently(order)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("API_DEBUG", "Gagal upload data offline: ${e.message}")
+                    }
+                }
+                fetchOrdersFromApi()
+                _apiState.value = ApiState.Success
+
+            } catch (e: Exception) {
+                _apiState.value = ApiState.Error("Gagal Sinkronisasi: Pastikan internet Anda menyala.")
+            }
+        }
+    }
+
+    fun fetchOrdersFromApi() {
+        viewModelScope.launch {
+            try {
+                val user = userFlow.first()
+                if (user.email.isNotEmpty()) {
+                    val remoteData = LaundryApi.retrofitService.getOrders(user.email)
+                    withContext(Dispatchers.IO) {
+                        dao.clearAllOrders()
+                        dao.insertAll(remoteData)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("API_DEBUG", "Server offline: ${e.message}")
             }
         }
     }
 
     fun updateOrder(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.updateOrder(order)
-        }
-    }
-
-    suspend fun getOrderById(id: Int): Order? {
-        return withContext(Dispatchers.IO) {
-            dao.getOrderById(id)
+            try {
+                val user = userFlow.first()
+                val response = LaundryApi.retrofitService.updateOrder(
+                    userId = user.email, action = "update", orderId = order.id, namaPelanggan = order.namaPelanggan,
+                    paketLayanan = order.paketLayanan, berat = order.berat, totalHarga = order.totalHarga,
+                    estimasiSelesai = order.estimasiSelesai, isJaket = if (order.isJaket) 1 else 0, isSprei = if (order.isSprei) 1 else 0
+                )
+                if (response.status == "success") {
+                    dao.updateOrder(order)
+                    fetchOrdersFromApi()
+                }
+            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal update: ${e.message}") }
         }
     }
 
     fun moveToTrash(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.moveToTrash(order.id)
+            try {
+                val user = userFlow.first()
+                val response = LaundryApi.retrofitService.updateTrashStatus(user.email, "trash", order.id)
+                if (response.status == "success") {
+                    dao.moveToTrash(order.id)
+                    fetchOrdersFromApi()
+                }
+            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal hapus: ${e.message}") }
         }
     }
 
     fun restoreOrder(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.restoreFromTrash(order.id)
+            try {
+                val user = userFlow.first()
+                val response = LaundryApi.retrofitService.updateTrashStatus(user.email, "restore", order.id)
+                if (response.status == "success") {
+                    dao.restoreFromTrash(order.id)
+                    fetchOrdersFromApi()
+                }
+            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal mengembalikan: ${e.message}") }
         }
     }
 
     fun hardDelete(order: Order) {
         viewModelScope.launch(Dispatchers.IO) {
-            dao.deletePermanently(order)
-        }
-    }
-
-    fun fetchOrdersFromApi() {
-        viewModelScope.launch {
-            _apiState.value = ApiState.Loading
             try {
                 val user = userFlow.first()
-                if (user.email.isNotEmpty()) {
-                    val remoteData = LaundryApi.retrofitService.getOrders(user.email)
-
-                    withContext(Dispatchers.IO) {
-                        dao.clearAllOrders()
-                        dao.insertAll(remoteData)
-                    }
-                    _apiState.value = ApiState.Success
-                } else {
-                    _apiState.value = ApiState.Error("User belum login")
-                }
-            } catch (e: Exception) {
-                _apiState.value = ApiState.Error(e.message ?: "Terjadi kesalahan jaringan")
-            }
-        }
-    }
-
-    fun addOrderToApi(namaLayanan: RequestBody, keterangan: RequestBody, image: MultipartBody.Part) {
-        viewModelScope.launch {
-            _apiState.value = ApiState.Loading
-            try {
-                val user = userFlow.first()
-
-                // Cek apakah email kosong
-                if (user.email.isEmpty()) {
-                    Log.e("API_DEBUG", "GAGAL KIRIM: Email kosong. Anda belum Login Google di aplikasi!")
-                    return@launch
-                }
-
-                Log.d("API_DEBUG", "Mulai mengirim data ke server...")
-
-                val response = LaundryApi.retrofitService.postOrder(user.email, namaLayanan, keterangan, image)
-
+                val response = LaundryApi.retrofitService.deleteOrder(user.email, order.id)
                 if (response.status == "success") {
-                    Log.d("API_DEBUG", "BERHASIL: Data sukses masuk ke database!")
+                    dao.deletePermanently(order)
                     fetchOrdersFromApi()
-                } else {
-                    Log.e("API_DEBUG", "DITOLAK SERVER: ${response.message}")
-                    _apiState.value = ApiState.Error(response.message ?: "Gagal menambah data")
                 }
-            } catch (e: Exception) {
-                Log.e("API_DEBUG", "CRASH/GAGAL KONEKSI: ${e.message}")
-                e.printStackTrace()
-                _apiState.value = ApiState.Error(e.message ?: "Gagal menghubungi server")
-            }
+            } catch (e: Exception) { Log.e("API_DEBUG", "Gagal hapus permanen: ${e.message}") }
         }
     }
 
-    fun deleteOrderFromApi(orderId: Int) {
-        viewModelScope.launch {
-            _apiState.value = ApiState.Loading
-            try {
-                val user = userFlow.first()
-                val response = LaundryApi.retrofitService.deleteOrder(user.email, orderId)
-
-                if (response.status == "success") {
-                    fetchOrdersFromApi()
-                } else {
-                    _apiState.value = ApiState.Error(response.message ?: "Gagal menghapus data")
-                }
-            } catch (e: Exception) {
-                _apiState.value = ApiState.Error(e.message ?: "Gagal menghubungi server")
-            }
-        }
-    }
-
-    fun clearApiState() {
-        _apiState.value = ApiState.Idle
-    }
+    fun clearApiState() { _apiState.value = ApiState.Idle }
 }

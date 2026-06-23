@@ -2,6 +2,7 @@ package com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.screen
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -10,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,9 +23,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.R
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.model.Order
 import com.afzzal0039.aplikasimanajemenorderlayanancuci.ui.LaundryViewModel
@@ -66,6 +69,8 @@ fun HistoryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    val context = LocalContext.current
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
@@ -77,6 +82,9 @@ fun HistoryScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.syncOfflineOrders(context) }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Sinkronisasi Data Offline")
+                    }
                     IconButton(onClick = { viewModel.toggleLayout(!isGridView) }) {
                         Icon(
                             painter = painterResource(
@@ -109,6 +117,7 @@ fun HistoryScreen(
                     items(orders, key = { it.id }) { order ->
                         OrderCard(
                             order = order,
+                            isGridView = true,
                             onDelete = { orderToDelete = order },
                             onEdit = {
                                 navController.navigate(Screen.Edit.createRoute(order.id))
@@ -125,6 +134,7 @@ fun HistoryScreen(
                     items(orders, key = { it.id }) { order ->
                         OrderCard(
                             order = order,
+                            isGridView = false,
                             onDelete = { orderToDelete = order },
                             onEdit = {
                                 navController.navigate(Screen.Edit.createRoute(order.id))
@@ -174,6 +184,7 @@ fun HistoryScreen(
 @Composable
 fun OrderCard(
     order: Order,
+    isGridView: Boolean,
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
@@ -188,38 +199,71 @@ fun OrderCard(
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Tampilkan foto jika ada URI-nya
+
+            if (isGridView) {
                 if (!order.imageUri.isNullOrEmpty()) {
-                    AsyncImage(
+                    SubcomposeAsyncImage(
                         model = order.imageUri,
                         contentDescription = "Foto Bukti Barang",
                         modifier = Modifier
-                            .size(70.dp)
+                            .fillMaxWidth()
+                            .height(110.dp)
                             .clip(MaterialTheme.shapes.medium),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        loading = {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
+                            }
+                        },
+                        error = {
+                            Box(modifier = Modifier.fillMaxSize().background(Color.LightGray), contentAlignment = Alignment.Center) {
+                                Text("Gagal", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = order.namaPelanggan,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1
-                    )
-                    Text("Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium)
-                    Text("${order.berat} kg", style = MaterialTheme.typography.bodySmall)
-                    Text(
-                        "Estimasi: ${order.estimasiSelesai}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                Text(text = order.namaPelanggan, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${order.berat} kg", style = MaterialTheme.typography.bodySmall)
+                Text("Est: ${order.estimasiSelesai}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!order.imageUri.isNullOrEmpty()) {
+                        SubcomposeAsyncImage(
+                            model = order.imageUri,
+                            contentDescription = "Foto Bukti Barang",
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(MaterialTheme.shapes.medium),
+                            contentScale = ContentScale.Crop,
+                            loading = {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
+                                }
+                            },
+                            error = {
+                                Box(modifier = Modifier.fillMaxSize().background(Color.LightGray), contentAlignment = Alignment.Center) {
+                                    Text("Gagal", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = order.namaPelanggan, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("Paket: ${order.paketLayanan}", style = MaterialTheme.typography.bodyMedium)
+                        Text("${order.berat} kg", style = MaterialTheme.typography.bodySmall)
+                        Text("Estimasi: ${order.estimasiSelesai}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
             Text(
                 text = hargaFormatted,
                 fontWeight = FontWeight.ExtraBold,
