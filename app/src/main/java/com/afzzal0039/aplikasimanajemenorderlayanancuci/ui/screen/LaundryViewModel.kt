@@ -65,6 +65,12 @@ class LaundryViewModel(
         }
     }
 
+    fun clearLocalData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            dao.clearAllOrders()
+        }
+    }
+
     fun toggleTheme(isDark: Boolean) { viewModelScope.launch { dataStore.saveDarkMode(isDark) } }
     fun toggleLayout(isGrid: Boolean) { viewModelScope.launch { dataStore.saveLayoutSetting(isGrid) } }
     suspend fun getOrderById(id: Int): Order? = withContext(Dispatchers.IO) { dao.getOrderById(id) }
@@ -251,7 +257,6 @@ class LaundryViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val user = userFlow.first()
             if (user.email.isEmpty()) {
-                // HANYA LOKAL
                 dao.deletePermanently(order)
             } else {
                 try {

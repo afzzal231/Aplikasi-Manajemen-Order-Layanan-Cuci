@@ -16,9 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
-// --- IMPORT FITUR PULL TO REFRESH BOX MATERIAL 3 ---
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-// ----------------------------------------------------
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -71,7 +69,7 @@ fun MainScreen(
     var showProfileDialog by remember { mutableStateOf(false) }
 
     var isAuthLoading by remember { mutableStateOf(false) }
-    var isPullRefreshing by remember { mutableStateOf(false) } // Mendeteksi tarikan layar
+    var isPullRefreshing by remember { mutableStateOf(false) }
 
     var namaPelanggan by rememberSaveable { mutableStateOf("") }
     var berat by rememberSaveable { mutableStateOf("") }
@@ -358,10 +356,13 @@ fun MainScreen(
 
                     coroutineScope.launch {
                         delay(1000L)
+
+                        viewModel.clearLocalData()
                         userDataStore.clearUserData()
                         viewModel.clearApiState()
+
                         isAuthLoading = false
-                        Toast.makeText(context, "Berhasil logout.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Berhasil logout. Data riwayat dibersihkan.", Toast.LENGTH_SHORT).show()
                     }
                 },
                 onHistoryClick = {
